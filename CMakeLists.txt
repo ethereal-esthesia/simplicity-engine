@@ -16,11 +16,6 @@ set(SDL_TEST OFF CACHE BOOL "Disable SDL tests" FORCE)
 set(SDL_SHARED OFF CACHE BOOL "Disable SDL shared library for self-contained binaries" FORCE)
 set(SDL_STATIC ON CACHE BOOL "Build SDL static library for self-contained binaries" FORCE)
 
-if(MSVC)
-  # Statically link the MSVC runtime (/MT, /MTd) for more self-contained binaries.
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-
 FetchContent_Declare(
   SDL3
   URL https://github.com/libsdl-org/SDL/releases/download/release-3.2.8/SDL3-3.2.8.tar.gz
@@ -31,22 +26,9 @@ add_executable(hello_pixel src/main.cpp)
 add_executable(smoke_sdl_init tests/smoke_sdl_init.cpp)
 add_executable(smoke_fast_rng tests/smoke_fast_rng.cpp)
 
-function(apply_runtime_linkage target_name)
-  if(MINGW)
-    # Keep MinGW runtime pieces in the executable to reduce external dependencies.
-    target_link_options(${target_name} PRIVATE -static-libgcc -static-libstdc++)
-  elseif(UNIX AND NOT APPLE)
-    # Statically link libstdc++/libgcc on Linux where supported.
-    target_link_options(${target_name} PRIVATE -static-libgcc -static-libstdc++)
-  endif()
-endfunction()
-
 target_link_libraries(hello_pixel PRIVATE SDL3::SDL3)
 target_link_libraries(smoke_sdl_init PRIVATE SDL3::SDL3)
 target_include_directories(smoke_fast_rng PRIVATE src)
-apply_runtime_linkage(hello_pixel)
-apply_runtime_linkage(smoke_sdl_init)
-apply_runtime_linkage(smoke_fast_rng)
 
 enable_testing()
 if(WIN32)
