@@ -26,6 +26,16 @@ Expected behavior:
 - A single white pixel appears at the center.
 - Closing the window exits cleanly.
 
+## Headless SDL Init Smoke Test
+
+This smoke test verifies SDL video subsystem initialization in no-display mode (`dummy` video driver):
+
+```bash
+cmake --preset release
+cmake --build --preset release
+ctest --test-dir build/release --output-on-failure -R smoke_sdl_init
+```
+
 ## Container Cross-Platform Build Smoke Test
 
 Build image:

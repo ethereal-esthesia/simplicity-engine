@@ -11,6 +11,7 @@ New-Item -ItemType Directory -Force -Path "dist" | Out-Null
 
 cmake --preset release
 cmake --build --preset release
+ctest --test-dir build/release --output-on-failure -R smoke_sdl_init
 
 $stageDir = Join-Path "dist" "simplicity-engine-windows-$ArchLabel"
 if (Test-Path $stageDir) {

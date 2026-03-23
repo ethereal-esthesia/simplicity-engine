@@ -22,5 +22,10 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(SDL2)
 
 add_executable(hello_pixel src/main.cpp)
+add_executable(smoke_sdl_init tests/smoke_sdl_init.cpp)
 
 target_link_libraries(hello_pixel PRIVATE SDL2::SDL2)
+target_link_libraries(smoke_sdl_init PRIVATE SDL2::SDL2)
+
+enable_testing()
+add_test(NAME smoke_sdl_init COMMAND smoke_sdl_init)
