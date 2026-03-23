@@ -35,7 +35,17 @@ jobs:
             ninja-build \
             git \
             ca-certificates \
-            pkg-config
+            pkg-config \
+            xorg-dev \
+            libasound2-dev \
+            libpulse-dev \
+            libudev-dev \
+            libwayland-dev \
+            libxkbcommon-dev \
+            libdrm-dev \
+            libgbm-dev \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev
 
       - name: Package Linux archive
         env:

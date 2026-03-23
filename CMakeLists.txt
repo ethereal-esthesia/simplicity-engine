@@ -13,7 +13,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(FetchContent)
 
 set(SDL_TEST OFF CACHE BOOL "Disable SDL tests" FORCE)
-set(SDL_SHARED ON CACHE BOOL "Build SDL shared library" FORCE)
+set(SDL_SHARED OFF CACHE BOOL "Disable SDL shared library for self-contained binaries" FORCE)
+set(SDL_STATIC ON CACHE BOOL "Build SDL static library for self-contained binaries" FORCE)
 
 FetchContent_Declare(
   SDL3
