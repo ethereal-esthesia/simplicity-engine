@@ -30,7 +30,15 @@ target_link_libraries(smoke_sdl_init PRIVATE SDL2::SDL2)
 target_include_directories(smoke_fast_rng PRIVATE src)
 
 enable_testing()
-add_test(NAME smoke_sdl_init COMMAND smoke_sdl_init)
+if(WIN32)
+  add_test(
+    NAME smoke_sdl_init
+    COMMAND
+      ${CMAKE_COMMAND} -E env "PATH=$<TARGET_FILE_DIR:SDL2::SDL2>;$ENV{PATH}"
+      $<TARGET_FILE:smoke_sdl_init>)
+else()
+  add_test(NAME smoke_sdl_init COMMAND smoke_sdl_init)
+endif()
 set_tests_properties(smoke_sdl_init PROPERTIES LABELS smoke)
 add_test(NAME smoke_fast_rng COMMAND smoke_fast_rng)
 set_tests_properties(smoke_fast_rng PROPERTIES LABELS smoke)
