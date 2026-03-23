@@ -9,3 +9,9 @@
 *.ppm binary
 *.exe binary
 *.dll binary
+
+# GitHub language stats: count engine source, not automation glue.
+.github/** linguist-vendored
+tools/** linguist-vendored
+docs/** linguist-documentation
+*.md linguist-documentation
