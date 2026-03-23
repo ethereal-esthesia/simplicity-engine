@@ -9,7 +9,7 @@ Utility scripts for local development, packaging, and release.
 
 ## Packaging
 
-- `package_linux.sh`: Build release binary and package Linux artifact (`.tar.gz`).
+- `package_linux.sh`: Build release binary and package Linux artifacts (`.tar.gz` and `.AppImage`).
 - `package_macos.sh`: Build release binary and package macOS artifact (`.tar.gz`).
 - `package_windows_zip.ps1`: Build release binary and package Windows artifact (`.zip`).
 
