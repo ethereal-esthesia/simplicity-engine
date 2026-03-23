@@ -1,11 +1,10 @@
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
-#include <stdbool.h>
-#include <stdio.h>
+#include <cstdio>
 
-int main(void) {
+int main() {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
+        std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
     }
 
@@ -17,7 +16,7 @@ int main(void) {
                          360,
                          SDL_WINDOW_SHOWN);
     if (!window) {
-        fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+        std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
         SDL_Quit();
         return 1;
     }
@@ -25,7 +24,7 @@ int main(void) {
     SDL_Renderer* renderer =
         SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer) {
-        fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
+        std::fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
         SDL_DestroyWindow(window);
         SDL_Quit();
         return 1;

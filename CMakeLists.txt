@@ -4,11 +4,11 @@ if(POLICY CMP0135)
   cmake_policy(SET CMP0135 NEW)
 endif()
 
-project(simplicity_engine C)
+project(simplicity_engine CXX)
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
 
@@ -21,6 +21,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL2)
 
-add_executable(hello_pixel src/main.c)
+add_executable(hello_pixel src/main.cpp)
 
 target_link_libraries(hello_pixel PRIVATE SDL2::SDL2)
