@@ -28,13 +28,17 @@ Expected behavior:
 
 ## Headless SDL Init Smoke Test
 
-This smoke test verifies SDL video subsystem initialization in no-display mode (`dummy` video driver):
+Smoke tests are label-based (`smoke`) and can be run in one command:
 
 ```bash
 cmake --preset release
 cmake --build --preset release
-ctest --test-dir build/release --output-on-failure -R smoke_sdl_init
+./tools/smoke.sh release
 ```
+
+Current smoke tests:
+- `smoke_sdl_init`: verifies SDL video subsystem initialization in no-display mode (`dummy` video driver).
+- `smoke_fast_rng`: verifies deterministic RNG output parity with Serenity vectors.
 
 ## Container Cross-Platform Build Smoke Test
 

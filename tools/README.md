@@ -5,6 +5,7 @@ Utility scripts for local development, packaging, and release.
 ## Build
 
 - `build-in-container.sh`: Build Linux and Windows targets inside the Docker build image.
+- `smoke.sh`: Run all CTest smoke tests (`LABELS smoke`) for a build flavor (`release` by default).
 
 ## Packaging
 

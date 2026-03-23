@@ -25,10 +25,13 @@ Before opening a PR:
 1. Build both local presets:
    - `cmake --preset debug && cmake --build --preset debug`
    - `cmake --preset release && cmake --build --preset release`
-2. If you touch container/build tooling, run:
+2. Run smoke tests:
+   - `./tools/smoke.sh debug`
+   - `./tools/smoke.sh release`
+3. If you touch container/build tooling, run:
    - `docker run --rm -it -v "$PWD:/workspace" simplicity-engine-build ./tools/build-in-container.sh`
-3. Update `README.md` and/or `TESTING.md` when behavior or commands change.
-4. Keep changes focused and explain rationale in the PR description.
+4. Update `README.md` and/or `TESTING.md` when behavior or commands change.
+5. Keep changes focused and explain rationale in the PR description.
 
 ## Coding Notes
 

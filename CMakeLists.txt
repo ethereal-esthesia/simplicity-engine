@@ -23,9 +23,14 @@ FetchContent_MakeAvailable(SDL2)
 
 add_executable(hello_pixel src/main.cpp)
 add_executable(smoke_sdl_init tests/smoke_sdl_init.cpp)
+add_executable(smoke_fast_rng tests/smoke_fast_rng.cpp)
 
 target_link_libraries(hello_pixel PRIVATE SDL2::SDL2)
 target_link_libraries(smoke_sdl_init PRIVATE SDL2::SDL2)
+target_include_directories(smoke_fast_rng PRIVATE src)
 
 enable_testing()
 add_test(NAME smoke_sdl_init COMMAND smoke_sdl_init)
+set_tests_properties(smoke_sdl_init PROPERTIES LABELS smoke)
+add_test(NAME smoke_fast_rng COMMAND smoke_fast_rng)
+set_tests_properties(smoke_fast_rng PROPERTIES LABELS smoke)

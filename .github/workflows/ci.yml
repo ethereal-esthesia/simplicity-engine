@@ -52,8 +52,9 @@ jobs:
       - name: Build (Debug)
         run: cmake --build --preset debug
 
-      - name: Smoke Test (Debug, headless SDL init)
-        run: ctest --test-dir build/debug --output-on-failure -R smoke_sdl_init
+      - name: Smoke Tests (Debug)
+        shell: bash
+        run: ./tools/smoke.sh debug
 
       - name: Configure (Release)
         run: cmake --preset release
@@ -61,5 +62,6 @@ jobs:
       - name: Build (Release)
         run: cmake --build --preset release
 
-      - name: Smoke Test (Release, headless SDL init)
-        run: ctest --test-dir build/release --output-on-failure -R smoke_sdl_init
+      - name: Smoke Tests (Release)
+        shell: bash
+        run: ./tools/smoke.sh release
