@@ -9,7 +9,7 @@ mkdir -p dist
 
 cmake --preset release
 cmake --build --preset release
-./tools/smoke.sh release
+ctest --test-dir build/release --output-on-failure
 
 STAGE_DIR="dist/simplicity-engine-linux-${ARCH_LABEL}"
 rm -rf "$STAGE_DIR"
