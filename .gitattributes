@@ -1,0 +1,11 @@
+* text=auto
+
+# Keep generated/build artifacts binary-safe if ever committed by accident.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.bmp binary
+*.ppm binary
+*.exe binary
+*.dll binary
