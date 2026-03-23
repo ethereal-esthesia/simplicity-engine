@@ -98,8 +98,10 @@ jobs:
         include:
           - arch: arm64
             runs_on: macos-latest
+            cmake_arch: arm64
           - arch: x64
-            runs_on: macos-13
+            runs_on: macos-latest
+            cmake_arch: x86_64
     runs-on: ${{ matrix.runs_on }}
     steps:
       - name: Checkout
@@ -111,6 +113,7 @@ jobs:
       - name: Package macOS archive
         env:
           ARCH_LABEL: ${{ matrix.arch }}
+          MACOS_CMAKE_ARCH: ${{ matrix.cmake_arch }}
         run: ./tools/package_macos.sh
 
       - name: Upload macOS artifact
