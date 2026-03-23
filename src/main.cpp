@@ -1,28 +1,22 @@
 #define SDL_MAIN_HANDLED
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <cstdio>
 
 int main() {
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
     }
 
     SDL_Window* window =
-        SDL_CreateWindow("Simplicity Engine - Hello Pixel",
-                         SDL_WINDOWPOS_CENTERED,
-                         SDL_WINDOWPOS_CENTERED,
-                         640,
-                         360,
-                         SDL_WINDOW_SHOWN);
+        SDL_CreateWindow("Simplicity Engine - Hello Pixel", 640, 360, SDL_WINDOW_RESIZABLE);
     if (!window) {
         std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
         SDL_Quit();
         return 1;
     }
 
-    SDL_Renderer* renderer =
-        SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, nullptr);
     if (!renderer) {
         std::fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
         SDL_DestroyWindow(window);
@@ -30,13 +24,13 @@ int main() {
         return 1;
     }
 
-    const SDL_Rect pixel = {320, 180, 1, 1};
+    const SDL_FRect pixel = {320.0f, 180.0f, 1.0f, 1.0f};
     bool running = true;
 
     while (running) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
+            if (event.type == SDL_EVENT_QUIT) {
                 running = false;
             }
         }
