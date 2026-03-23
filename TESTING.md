@@ -18,6 +18,14 @@ cmake --build --preset release
 ./tools/smoke.sh release
 ```
 
+Full test suite (broader than smoke):
+
+```bash
+cmake --preset release
+cmake --build --preset release
+./tools/test.sh release
+```
+
 Optional manual visual check:
 
 Debug:
@@ -55,6 +63,9 @@ cmake --build --preset release
 Current smoke tests:
 - `smoke_sdl_init`: verifies SDL video subsystem initialization in no-display mode (`dummy` video driver).
 - `smoke_fast_rng`: verifies deterministic RNG output parity with Serenity vectors.
+
+Additional non-smoke tests:
+- `test_fast_rng_vectors` (`rng`, `full` labels): broader deterministic vector parity and behavioral checks for RNG.
 
 ## Container Cross-Platform Build Smoke Test
 
