@@ -20,12 +20,15 @@ tar -C dist -czf "dist/simplicity-engine-linux-${ARCH_LABEL}.tar.gz" "simplicity
 echo "Created dist/simplicity-engine-linux-${ARCH_LABEL}.tar.gz"
 
 APPIMAGE_ARCH=""
+LINUXDEPLOY_SHA256=""
 case "$ARCH_LABEL" in
   x64)
     APPIMAGE_ARCH="x86_64"
+    LINUXDEPLOY_SHA256="c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d"
     ;;
   arm64)
     APPIMAGE_ARCH="aarch64"
+    LINUXDEPLOY_SHA256="620095110d693282b8ebeb244a95b5e911cf8f65f76c88b4b47d16ae6346fcff"
     ;;
   *)
     echo "Unsupported ARCH_LABEL: ${ARCH_LABEL}"
@@ -63,7 +66,9 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 LINUXDEPLOY_APPIMAGE="${TMP_DIR}/linuxdeploy-${APPIMAGE_ARCH}.AppImage"
-curl -fL "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-${APPIMAGE_ARCH}.AppImage" -o "$LINUXDEPLOY_APPIMAGE"
+LINUXDEPLOY_VERSION="1-alpha-20251107-1"
+curl -fL "https://github.com/linuxdeploy/linuxdeploy/releases/download/${LINUXDEPLOY_VERSION}/linuxdeploy-${APPIMAGE_ARCH}.AppImage" -o "$LINUXDEPLOY_APPIMAGE"
+echo "${LINUXDEPLOY_SHA256}  ${LINUXDEPLOY_APPIMAGE}" | sha256sum -c -
 chmod +x "$LINUXDEPLOY_APPIMAGE"
 
 (

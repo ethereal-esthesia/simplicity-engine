@@ -1,8 +1,24 @@
 # Testing
 
-This project currently uses a lightweight smoke-test approach: build both primary build types and run the app manually.
+This project uses an automated smoke-first approach for every change, with optional manual visual verification.
 
 ## Local Smoke Test
+
+Primary path (recommended):
+
+```bash
+cmake --preset debug
+cmake --build --preset debug
+./tools/smoke.sh debug
+```
+
+```bash
+cmake --preset release
+cmake --build --preset release
+./tools/smoke.sh release
+```
+
+Optional manual visual check:
 
 Debug:
 
