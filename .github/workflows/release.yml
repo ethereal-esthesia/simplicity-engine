@@ -35,6 +35,7 @@ jobs:
             ninja-build \
             git \
             curl \
+            file \
             ca-certificates \
             pkg-config \
             patchelf \
