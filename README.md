@@ -7,6 +7,7 @@ Simplicity Engine aims to reduce the complexity of getting high quality, fluid m
 This repo currently includes a minimal SDL app that opens a window and renders a single white pixel at the center.
 
 Project reference docs live in `docs/`.
+- Palette mapping reference: `docs/palette-mapping.md`
 
 ## Build Types
 
