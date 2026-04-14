@@ -20,6 +20,9 @@ parallels_install_hint() {
     windows:compiler)
       package_hint="Visual Studio Build Tools with the C++ workload"
       ;;
+    windows:cl)
+      package_hint="Visual Studio Build Tools with the C++ workload"
+      ;;
     linux:compiler)
       package_hint="a C/C++ compiler toolchain such as build-essential"
       ;;

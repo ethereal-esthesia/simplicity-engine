@@ -69,20 +69,26 @@ function Import-VsDevEnvironment {
     $environment = $null
     foreach ($architecture in $architectures) {
         $environment = cmd.exe /s /c "`"$vsDevCmd`" -arch=$($architecture["TargetArch"]) -host_arch=$($architecture["HostArch"]) >nul && set"
-        if ($LASTEXITCODE -eq 0) {
-            break
+        if ($LASTEXITCODE -ne 0) {
+            $environment = $null
+            continue
         }
+
+        foreach ($line in $environment) {
+            if ($line -match "^([^=]+)=(.*)$") {
+                [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], "Process")
+            }
+        }
+
+        if (Get-Command cl -ErrorAction SilentlyContinue) {
+            return
+        }
+
         $environment = $null
     }
 
     if (-not $environment) {
         return
-    }
-
-    foreach ($line in $environment) {
-        if ($line -match "^([^=]+)=(.*)$") {
-            [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], "Process")
-        }
     }
 }
 
