@@ -55,20 +55,20 @@ function Import-VsDevEnvironment {
 
     $architectures = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
         @(
-            @{ Target = "arm64"; Host = "arm64" },
-            @{ Target = "x64"; Host = "x64" },
-            @{ Target = "x64"; Host = "arm64" }
+            @{ TargetArch = "arm64"; HostArch = "arm64" },
+            @{ TargetArch = "x64"; HostArch = "x64" },
+            @{ TargetArch = "x64"; HostArch = "arm64" }
         )
     } else {
         @(
-            @{ Target = "amd64"; Host = "amd64" },
-            @{ Target = "x64"; Host = "x64" }
+            @{ TargetArch = "amd64"; HostArch = "amd64" },
+            @{ TargetArch = "x64"; HostArch = "x64" }
         )
     }
 
     $environment = $null
     foreach ($architecture in $architectures) {
-        $environment = cmd.exe /s /c "`"$vsDevCmd`" -arch=$($architecture.Target) -host_arch=$($architecture.Host) >nul && set"
+        $environment = cmd.exe /s /c "`"$vsDevCmd`" -arch=$($architecture["TargetArch"]) -host_arch=$($architecture["HostArch"]) >nul && set"
         if ($LASTEXITCODE -eq 0) {
             break
         }
