@@ -235,6 +235,7 @@ if [[ "$SYNC" == "host" ]]; then
 
   echo "Syncing Windows checkout from Mac shared repo '${HOST_REPO}' branch '${HOST_BRANCH}'"
   if sync_output="$(prlctl exec "$VM_NAME" --current-user powershell.exe \
+    -WindowStyle Hidden \
     -NoProfile \
     -ExecutionPolicy Bypass \
     -Command '& { param($repo, $hostRepo, $branch) function Invoke-Git { & git @args; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }; if (-not (Test-Path -LiteralPath (Join-Path $hostRepo ".git") -PathType Container)) { Write-Output host-repo-not-found; exit 1 }; Set-Location -LiteralPath $repo; & git remote get-url mac *> $null; if ($LASTEXITCODE -eq 0) { Invoke-Git remote set-url mac $hostRepo } else { Invoke-Git remote add mac $hostRepo }; Invoke-Git fetch mac "${branch}:refs/remotes/mac/${branch}"; Invoke-Git checkout -f -B $branch "refs/remotes/mac/${branch}"; Invoke-Git status --short --branch }' \
@@ -269,6 +270,7 @@ if [[ "$SYNC" == "host" ]]; then
 fi
 
 cmd=(prlctl exec "$VM_NAME" --current-user powershell.exe \
+  -WindowStyle Hidden \
   -NoProfile \
   -ExecutionPolicy Bypass \
   -File "$guest_script" \
