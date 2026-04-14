@@ -16,8 +16,8 @@ NSString* repositoryRootPath() {
 }
 
 NSURL* tokenFileURL() {
-    NSString* localPath = [repositoryRootPath() stringByAppendingPathComponent:@"local/probes"];
-    return [NSURL fileURLWithPath:[localPath stringByAppendingPathComponent:@"macos-bookmark-token.json"]];
+    NSString* dataPath = [repositoryRootPath() stringByAppendingPathComponent:@"data/probe"];
+    return [NSURL fileURLWithPath:[dataPath stringByAppendingPathComponent:@"macos-bookmark-token.json"]];
 }
 
 void printNSError(NSString* prefix, NSError* error) {
@@ -282,7 +282,7 @@ void printUsage(const char* executableName) {
                  "  %s choose\n"
                  "  %s resolve\n"
                  "  %s load <relative-file>\n\n"
-                 "The token is stored at local/probes/macos-bookmark-token.json in this repo.\n",
+                 "The token is stored at data/probe/macos-bookmark-token.json in this repo.\n",
                  executableName,
                  executableName,
                  executableName);

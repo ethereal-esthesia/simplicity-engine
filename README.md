@@ -55,7 +55,7 @@ cmake --build --preset debug --target macos_bookmark_probe
 ./build/debug/macos_bookmark_probe load index.html
 ```
 
-`choose` opens a folder picker and saves the base64 bookmark token to `local/probes/macos-bookmark-token.json`.
+`choose` opens a folder picker and saves the base64 bookmark token to `data/probe/macos-bookmark-token.json`.
 `load` resolves that token, starts scoped access, opens the requested relative file with `NSFileHandle`, and prints a short preview.
 
 ## Containerized Build
