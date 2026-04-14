@@ -31,23 +31,19 @@ Optional manual visual check:
 Debug:
 
 ```bash
-cmake --preset debug
-cmake --build --preset debug
-./build/debug/hello_pixel
+./scripts/run.sh
 ```
 
 Release:
 
 ```bash
-cmake --preset release
-cmake --build --preset release
-./build/release/hello_pixel
+./scripts/run.sh --preset release
 ```
 
 Expected behavior:
 - A window titled `Simplicity Engine - Hello Pixel` opens.
 - Background is dark.
-- A single white pixel appears at the center.
+- A small mint mark appears at the center.
 - Closing the window exits cleanly.
 
 ## Headless SDL Init Smoke Test

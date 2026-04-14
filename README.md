@@ -4,7 +4,7 @@ Simplicity Engine aims to reduce the complexity of getting high quality, fluid m
 
 ## Hello Pixel (SDL)
 
-This repo currently includes a minimal SDL app that opens a window and renders a single white pixel at the center.
+This repo currently includes a minimal SDL app that opens a window and renders a small visible mark at the center.
 
 Project reference docs live in `docs/`.
 - Palette mapping reference: `docs/palette-mapping.md`
@@ -58,7 +58,21 @@ winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--pass
 - For native Windows ARM64 builds, use an MSVC developer shell that targets ARM64. An ARM64-hosted x64 compiler still builds x64 binaries.
 - Rerunning `winget install` only checks for an upgrade after Visual Studio Build Tools is installed. If Build Tools is already installed without the needed compiler target, uninstall it with `winget uninstall --id Microsoft.VisualStudio.2022.BuildTools -e`, then rerun the Windows block above.
 
-Debug (default):
+Demo run (default debug `hello_pixel` build):
+
+```bash
+./scripts/run.sh
+```
+
+Useful variants:
+
+```bash
+./scripts/run.sh --no-launch
+./scripts/run.sh --test
+./scripts/run.sh --preset release
+```
+
+Manual debug equivalent:
 
 ```bash
 cmake --preset debug
@@ -66,7 +80,7 @@ cmake --build --preset debug
 ./build/debug/hello_pixel
 ```
 
-Release:
+Manual release equivalent:
 
 ```bash
 cmake --preset release
