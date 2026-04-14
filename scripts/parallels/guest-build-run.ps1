@@ -11,6 +11,7 @@ param(
 $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\install-hints.ps1"
 $script:VsDevEnvironmentAttempts = @()
+$script:InstalledMsvcCompilers = @()
 
 function Require-Command {
     param([string]$Name)
@@ -44,8 +45,8 @@ function Get-ClArchitecture {
 
     if ($Path -match "\\bin\\Host([^\\]+)\\([^\\]+)\\cl\.exe$") {
         return [pscustomobject]@{
-            Host = $Matches[1]
-            Target = $Matches[2]
+            Host = $Matches[1].ToLowerInvariant()
+            Target = $Matches[2].ToLowerInvariant()
         }
     }
 
@@ -88,6 +89,41 @@ function Format-VsDevEnvironmentAttempts {
     }
 
     return " Tried Visual Studio environments: $($attempts -join '; ')."
+}
+
+function Get-InstalledMsvcCompilers {
+    param([string]$InstallPath)
+
+    $compilerRoot = Join-Path $InstallPath "VC\Tools\MSVC"
+    if (-not (Test-Path -LiteralPath $compilerRoot -PathType Container)) {
+        return @()
+    }
+
+    $compilerPaths = Get-ChildItem -Path (Join-Path $compilerRoot "*\bin\Host*\*\cl.exe") -ErrorAction SilentlyContinue
+    foreach ($compilerPath in $compilerPaths) {
+        $architecture = Get-ClArchitecture $compilerPath.FullName
+        if (-not $architecture) {
+            continue
+        }
+
+        [pscustomobject]@{
+            Host = $architecture.Host
+            Target = $architecture.Target
+            Path = $compilerPath.FullName
+        }
+    }
+}
+
+function Format-InstalledMsvcCompilers {
+    if (-not $script:InstalledMsvcCompilers) {
+        return ""
+    }
+
+    $descriptions = $script:InstalledMsvcCompilers |
+        ForEach-Object { "host=$($_.Host) target=$($_.Target)" } |
+        Sort-Object -Unique
+
+    return " Installed MSVC compiler targets: $($descriptions -join '; ')."
 }
 
 function ConvertTo-EnvironmentMap {
@@ -145,6 +181,7 @@ function Import-VsDevEnvironment {
     if (-not $installPath) {
         return
     }
+    $script:InstalledMsvcCompilers = @(Get-InstalledMsvcCompilers $installPath)
 
     $vsDevCmd = Join-Path $installPath "Common7\Tools\VsDevCmd.bat"
     if (-not (Test-Path -LiteralPath $vsDevCmd -PathType Leaf)) {
@@ -209,10 +246,10 @@ if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
     if ($clPath -and (-not (Test-ClTargetsArm64))) {
         $clArchitecture = Get-ClArchitecture $clPath
         $architectureDescription = if ($clArchitecture) { "compiler host=$($clArchitecture.Host) target=$($clArchitecture.Target)" } else { "unknown compiler host/target" }
-        throw "MSVC was found, but it is not targeting ARM64 ($architectureDescription): $clPath. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)"
+        throw "MSVC was found, but it is not targeting ARM64 ($architectureDescription): $clPath. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)$(Format-InstalledMsvcCompilers)"
     }
     if (-not $clPath) {
-        throw "MSVC ARM64 target tools were not found. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)"
+        throw "MSVC ARM64 target tools were not found. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)$(Format-InstalledMsvcCompilers)"
     }
 } else {
     Require-Command cl
