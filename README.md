@@ -20,8 +20,36 @@ To match Serenity's workflow, this project uses two primary build types:
 
 Requirements:
 - CMake 3.21+
+- Ninja
 - C compiler
 - Internet access during configure (CMake fetches SDL automatically)
+
+Install build tools on macOS with Homebrew:
+
+```bash
+brew install cmake ninja
+```
+
+Or with MacPorts:
+
+```bash
+sudo port install cmake ninja
+```
+
+Install build tools on Debian/Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake ninja-build git
+```
+
+Install build tools on Windows:
+
+```powershell
+winget install --id Kitware.CMake -e
+winget install --id Ninja-build.Ninja -e
+winget install --id Git.Git -e
+```
 
 Debug (default):
 
