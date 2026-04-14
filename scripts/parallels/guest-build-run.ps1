@@ -33,8 +33,17 @@ function Invoke-Checked {
     }
 }
 
+function Test-ClTargetsArm64 {
+    $clPath = (Get-Command cl -ErrorAction SilentlyContinue).Source
+    return ($clPath -and ($clPath -match "\\bin\\Host[^\\]+\\arm64\\cl\.exe$"))
+}
+
 function Import-VsDevEnvironment {
-    if (Get-Command cl -ErrorAction SilentlyContinue) {
+    if (($env:PROCESSOR_ARCHITECTURE -ne "ARM64") -and (Get-Command cl -ErrorAction SilentlyContinue)) {
+        return
+    }
+
+    if (($env:PROCESSOR_ARCHITECTURE -eq "ARM64") -and (Test-ClTargetsArm64)) {
         return
     }
 
@@ -80,7 +89,11 @@ function Import-VsDevEnvironment {
             }
         }
 
-        if (Get-Command cl -ErrorAction SilentlyContinue) {
+        if (($env:PROCESSOR_ARCHITECTURE -eq "ARM64") -and (Test-ClTargetsArm64)) {
+            return
+        }
+
+        if (($env:PROCESSOR_ARCHITECTURE -ne "ARM64") -and (Get-Command cl -ErrorAction SilentlyContinue)) {
             return
         }
 
@@ -100,7 +113,7 @@ Require-Command cl
 
 if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
     $clPath = (Get-Command cl -ErrorAction SilentlyContinue).Source
-    if ($clPath -and ($clPath -notmatch "\\bin\\Host[^\\]+\\arm64\\cl\.exe$")) {
+    if ($clPath -and (-not (Test-ClTargetsArm64))) {
         throw "MSVC was found, but it is not targeting ARM64: $clPath. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details."
     }
 }
