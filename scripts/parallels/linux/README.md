@@ -51,6 +51,8 @@ Common options:
 ```bash
 ./scripts/parallels/linux/run-linux.sh --vm "Debian 12"
 ./scripts/parallels/linux/run-linux.sh --sync pull
+./scripts/parallels/linux/run-linux.sh --sync host
+./scripts/parallels/linux/run-linux.sh --sync host --host-repo /media/psf/Home/Project/simplicity-engine
 ./scripts/parallels/linux/run-linux.sh --preset linux-release
 ./scripts/parallels/linux/run-linux.sh --target smoke_sdl_init --no-launch
 ./scripts/parallels/linux/run-linux.sh --test
@@ -58,9 +60,10 @@ Common options:
 ```
 
 `--sync pull` runs `git pull --ff-only` inside the Linux checkout before building.
+`--sync host` fetches and fast-forwards from the Mac checkout through a Parallels shared folder before building. The default shared path is `/media/psf/Home/<host repo path relative to $HOME>`; pass `--host-repo` if your Linux VM sees the shared folder somewhere else.
 `--launch` runs the built executable inside the Linux desktop session after a successful build.
 
 ## Sync Notes
-The Linux checkout is a separate working copy. Commit and push from macOS before using `--sync pull`, or manually copy changes into the Linux checkout.
+The Linux checkout is a separate working copy. Commit and push from macOS before using `--sync pull`, or commit locally and use `--sync host` to pull from the Mac checkout without pushing.
 
-If you need to test uncommitted macOS changes, use a Parallels shared folder or add a dedicated copy/sync step later.
+`--sync host` still uses Git, so it syncs committed local changes. It does not copy uncommitted edits.

@@ -41,6 +41,8 @@ Common options:
 
 ```bash
 ./scripts/parallels/run-windows.sh --sync pull
+./scripts/parallels/run-windows.sh --sync host
+./scripts/parallels/run-windows.sh --sync host --host-repo '\\Mac\Home\Project\simplicity-engine'
 ./scripts/parallels/run-windows.sh --preset release
 ./scripts/parallels/run-windows.sh --target smoke_sdl_init --no-launch
 ./scripts/parallels/run-windows.sh --test
@@ -49,10 +51,11 @@ Common options:
 ```
 
 `--sync pull` runs `git pull --ff-only` inside the Windows checkout before building.
+`--sync host` fetches and fast-forwards from the Mac checkout through a Parallels shared folder before building. The default shared path is `\\Mac\Home\<host repo path relative to $HOME>`; pass `--host-repo` if your Windows VM sees the shared folder somewhere else.
 `--launch` runs the built executable through Windows after a successful build.
 `--native` enables guest-to-host app sharing before launch so Windows app windows can integrate more naturally with macOS.
 
 ## Sync Notes
-The Windows checkout is a separate working copy. Commit and push from macOS before using `--sync pull`, or manually copy changes into the Windows checkout.
+The Windows checkout is a separate working copy. Commit and push from macOS before using `--sync pull`, or commit locally and use `--sync host` to pull from the Mac checkout without pushing.
 
-If you need to test uncommitted macOS changes, use a Parallels shared folder or add a dedicated copy/sync step later.
+`--sync host` still uses Git, so it syncs committed local changes. It does not copy uncommitted edits.

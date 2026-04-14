@@ -6,6 +6,7 @@ GUEST_REPO='C:\Users\shane\Project\simplicity-engine'
 PRESET="debug"
 TARGET="hello_pixel"
 SYNC="none"
+HOST_REPO=""
 RUN_TESTS=0
 LAUNCH=1
 NATIVE_MODE=0
@@ -31,7 +32,10 @@ Options:
   --guest-repo <path>     Windows repo path. Default: C:\Users\shane\Project\simplicity-engine
   --preset <name>         CMake preset to build. Default: debug
   --target <name>         CMake target to build. Default: hello_pixel
-  --sync <none|pull>      Sync step inside Windows before build. Default: none
+  --sync <none|pull|host> Sync step before build. Default: none
+                           host pulls from this Mac repo through a Parallels shared folder.
+  --host-repo <path>      Windows path to this Mac repo through Parallels sharing.
+                           Default: \\Mac\Home\<host repo path relative to $HOME>
   --test                  Run ctest after build.
   --no-test               Do not run ctest after build. Default.
   --launch                Launch the built executable. Default.
@@ -39,6 +43,30 @@ Options:
   --native                Enable guest-to-host app sharing before launch.
   -h, --help              Show this help.
 EOF
+}
+
+host_repo_relative_path() {
+  local host_home
+
+  host_home="${HOME%/}"
+  if [[ -n "$host_home" && "$REPO_ROOT" == "$host_home/"* ]]; then
+    printf '%s\n' "${REPO_ROOT#"$host_home"/}"
+  else
+    basename "$REPO_ROOT"
+  fi
+}
+
+default_host_repo() {
+  local relative_path
+  local windows_relative
+
+  relative_path="$(host_repo_relative_path)"
+  windows_relative="${relative_path//\//\\}"
+  printf '\\\\Mac\\Home\\%s\n' "$windows_relative"
+}
+
+host_branch() {
+  git -C "$REPO_ROOT" branch --show-current
 }
 
 while [[ $# -gt 0 ]]; do
@@ -61,6 +89,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --sync)
       SYNC="${2:?Missing value for --sync}"
+      shift 2
+      ;;
+    --host-repo)
+      HOST_REPO="${2:?Missing value for --host-repo}"
       shift 2
       ;;
     --test)
@@ -95,8 +127,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$SYNC" != "none" && "$SYNC" != "pull" ]]; then
-  echo "--sync must be 'none' or 'pull'." >&2
+if [[ "$SYNC" != "none" && "$SYNC" != "pull" && "$SYNC" != "host" ]]; then
+  echo "--sync must be 'none', 'pull', or 'host'." >&2
   exit 2
 fi
 
@@ -130,6 +162,39 @@ fi
 echo "Running Windows build in VM '${VM_NAME}' at '${GUEST_REPO}'"
 echo "Mac repo: ${REPO_ROOT}"
 
+GUEST_SYNC="$SYNC"
+if [[ "$SYNC" == "host" ]]; then
+  HOST_REPO="${HOST_REPO:-$(default_host_repo)}"
+  HOST_BRANCH="$(host_branch)"
+  if [[ -z "$HOST_BRANCH" ]]; then
+    echo "--sync host requires the Mac checkout to be on a named branch." >&2
+    exit 1
+  fi
+
+  echo "Syncing Windows checkout from Mac shared repo '${HOST_REPO}' branch '${HOST_BRANCH}'"
+  if sync_output="$(prlctl exec "$VM_NAME" --current-user powershell.exe \
+    -NoProfile \
+    -ExecutionPolicy Bypass \
+    -Command '& { param($repo, $hostRepo, $branch) if (-not (Test-Path -LiteralPath (Join-Path $hostRepo ".git") -PathType Container)) { Write-Output host-repo-not-found; exit 1 }; Set-Location -LiteralPath $repo; if (git remote get-url mac 2>$null) { git remote set-url mac $hostRepo } else { git remote add mac $hostRepo }; git fetch mac $branch; git pull --ff-only mac $branch }' \
+    "$GUEST_REPO" \
+    "$HOST_REPO" \
+    "$HOST_BRANCH" </dev/null 2>&1)"; then
+    printf '%s\n' "$sync_output"
+  else
+    case "$sync_output" in
+      *host-repo-not-found*)
+        echo "Mac shared repo was not found from the Windows VM: ${HOST_REPO}" >&2
+        echo "Check Parallels shared folders, or pass --host-repo with the Windows-visible path." >&2
+        ;;
+      *)
+        printf '%s\n' "$sync_output" >&2
+        ;;
+    esac
+    exit 1
+  fi
+  GUEST_SYNC="none"
+fi
+
 cmd=(prlctl exec "$VM_NAME" --current-user powershell.exe \
   -NoProfile \
   -ExecutionPolicy Bypass \
@@ -137,7 +202,7 @@ cmd=(prlctl exec "$VM_NAME" --current-user powershell.exe \
   -Repo "$GUEST_REPO" \
   -Preset "$PRESET" \
   -Target "$TARGET" \
-  -Sync "$SYNC")
+  -Sync "$GUEST_SYNC")
 
 if [[ "$RUN_TESTS" -eq 1 ]]; then
   cmd+=(-RunTests)
