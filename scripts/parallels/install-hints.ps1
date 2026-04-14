@@ -11,6 +11,8 @@ function Get-ParallelsInstallHint {
         "windows:git" { "Git for Windows"; break }
         "windows:cmake" { "CMake"; break }
         "windows:ninja" { "Ninja"; break }
+        "windows:compiler" { "Visual Studio Build Tools with the C++ workload"; break }
+        "linux:compiler" { "a C/C++ compiler toolchain such as build-essential"; break }
         default { $Command }
     }
     $platformName = switch ($Platform) {

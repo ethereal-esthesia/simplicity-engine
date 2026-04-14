@@ -203,6 +203,9 @@ else
     *"Required command not found in Linux PATH: ninja"*|*"ninja was not found in the Linux VM"*)
       parallels_install_hint linux ninja "rerun the Linux build" >&2
       ;;
+    *"No CMAKE_C_COMPILER could be found."*|*"No CMAKE_CXX_COMPILER could be found."*)
+      parallels_install_hint linux compiler "rerun the Linux build" >&2
+      ;;
     *)
       printf '%s\n' "$output" >&2
       ;;

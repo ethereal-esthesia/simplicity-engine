@@ -19,9 +19,57 @@ function Require-Command {
     }
 }
 
+function Invoke-Checked {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Command,
+        [Parameter(ValueFromRemainingArguments=$true)]
+        [string[]]$Arguments
+    )
+
+    & $Command @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "${Command} failed with exit code ${LASTEXITCODE}"
+    }
+}
+
+function Import-VsDevEnvironment {
+    if (Get-Command cl -ErrorAction SilentlyContinue) {
+        return
+    }
+
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+    if (-not (Test-Path -LiteralPath $vswhere -PathType Leaf)) {
+        return
+    }
+
+    $installPath = (& $vswhere -latest -products * -property installationPath | Select-Object -First 1)
+    if (-not $installPath) {
+        return
+    }
+
+    $vsDevCmd = Join-Path $installPath "Common7\Tools\VsDevCmd.bat"
+    if (-not (Test-Path -LiteralPath $vsDevCmd -PathType Leaf)) {
+        return
+    }
+
+    $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
+    $environment = cmd.exe /s /c "`"$vsDevCmd`" -arch=$arch -host_arch=$arch >nul && set"
+    if ($LASTEXITCODE -ne 0) {
+        return
+    }
+
+    foreach ($line in $environment) {
+        if ($line -match "^([^=]+)=(.*)$") {
+            [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], "Process")
+        }
+    }
+}
+
 Require-Command cmake
 Require-Command git
 Require-Command ninja
+Import-VsDevEnvironment
 
 if (-not (Test-Path -LiteralPath $Repo -PathType Container)) {
     throw "Windows repo path does not exist: $Repo"
@@ -30,14 +78,14 @@ if (-not (Test-Path -LiteralPath $Repo -PathType Container)) {
 Set-Location -LiteralPath $Repo
 
 if ($Sync -eq "pull") {
-    git pull --ff-only
+    Invoke-Checked git pull --ff-only
 }
 
-cmake --preset $Preset
-cmake --build --preset $Preset --target $Target
+Invoke-Checked cmake --preset $Preset
+Invoke-Checked cmake --build --preset $Preset --target $Target
 
 if ($RunTests) {
-    ctest --test-dir "build/$Preset" --output-on-failure
+    Invoke-Checked ctest --test-dir "build/$Preset" --output-on-failure
 }
 
 if ($Launch) {

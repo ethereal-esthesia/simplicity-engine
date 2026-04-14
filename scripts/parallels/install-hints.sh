@@ -17,6 +17,12 @@ parallels_install_hint() {
     windows:ninja)
       package_hint="Ninja"
       ;;
+    windows:compiler)
+      package_hint="Visual Studio Build Tools with the C++ workload"
+      ;;
+    linux:compiler)
+      package_hint="a C/C++ compiler toolchain such as build-essential"
+      ;;
     linux:*)
       package_hint="${command_name}"
       ;;

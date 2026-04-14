@@ -213,7 +213,15 @@ if [[ "$LAUNCH" -eq 1 ]]; then
 fi
 
 if output="$("${cmd[@]}" 2>&1)"; then
-  printf '%s\n' "$output"
+  case "$output" in
+    *"No CMAKE_C_COMPILER could be found."*|*"No CMAKE_CXX_COMPILER could be found."*)
+      parallels_install_hint windows compiler "open an MSVC developer shell or rerun the Windows build after the compiler is on PATH" >&2
+      exit 1
+      ;;
+    *)
+      printf '%s\n' "$output"
+      ;;
+  esac
 else
   case "$output" in
     *"Required command not found in Windows PATH: cmake"*|*"cmake was not found in the Windows VM"*)
@@ -224,6 +232,9 @@ else
       ;;
     *"Required command not found in Windows PATH: ninja"*|*"ninja was not found in the Windows VM"*)
       parallels_install_hint windows ninja "rerun the Windows build" >&2
+      ;;
+    *"No CMAKE_C_COMPILER could be found."*|*"No CMAKE_CXX_COMPILER could be found."*)
+      parallels_install_hint windows compiler "open an MSVC developer shell or rerun the Windows build after the compiler is on PATH" >&2
       ;;
     *)
       printf '%s\n' "$output" >&2

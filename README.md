@@ -21,8 +21,14 @@ To match Serenity's workflow, this project uses two primary build types:
 Requirements:
 - CMake 3.21+
 - Ninja
-- C compiler
+- C/C++ compiler
 - Internet access during configure (CMake fetches SDL automatically)
+
+Install Apple's command line compiler tools on macOS:
+
+```bash
+xcode-select --install
+```
 
 Install build tools on macOS with Homebrew:
 
@@ -49,7 +55,10 @@ Install build tools on Windows:
 winget install --id Kitware.CMake -e
 winget install --id Ninja-build.Ninja -e
 winget install --id Git.Git -e
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
 ```
+
+On Windows, use an MSVC developer shell, such as the "Developer PowerShell for VS", so the compiler tools are on PATH.
 
 Debug (default):
 
