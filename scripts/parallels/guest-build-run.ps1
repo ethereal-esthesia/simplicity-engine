@@ -10,6 +10,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\install-hints.ps1"
+$script:VsDevEnvironmentAttempts = @()
 
 function Require-Command {
     param([string]$Name)
@@ -36,6 +37,57 @@ function Invoke-Checked {
 function Test-ClTargetsArm64 {
     $clPath = (Get-Command cl -ErrorAction SilentlyContinue).Source
     return ($clPath -and ($clPath -match "\\bin\\Host[^\\]+\\arm64\\cl\.exe$"))
+}
+
+function Get-ClArchitecture {
+    param([string]$Path)
+
+    if ($Path -match "\\bin\\Host([^\\]+)\\([^\\]+)\\cl\.exe$") {
+        return [pscustomobject]@{
+            Host = $Matches[1]
+            Target = $Matches[2]
+        }
+    }
+
+    return $null
+}
+
+function Add-VsDevEnvironmentAttempt {
+    param(
+        [hashtable]$Architecture,
+        [string]$ClPath,
+        [string]$Status
+    )
+
+    $clArchitecture = $null
+    if ($ClPath) {
+        $clArchitecture = Get-ClArchitecture $ClPath
+    }
+
+    $script:VsDevEnvironmentAttempts += [pscustomobject]@{
+        RequestedHost = $Architecture["HostArch"]
+        RequestedTarget = $Architecture["TargetArch"]
+        CompilerHost = if ($clArchitecture) { $clArchitecture.Host } else { $null }
+        CompilerTarget = if ($clArchitecture) { $clArchitecture.Target } else { $null }
+        ClPath = $ClPath
+        Status = $Status
+    }
+}
+
+function Format-VsDevEnvironmentAttempts {
+    if (-not $script:VsDevEnvironmentAttempts) {
+        return ""
+    }
+
+    $attempts = foreach ($attempt in $script:VsDevEnvironmentAttempts) {
+        if ($attempt.ClPath) {
+            "requested host=$($attempt.RequestedHost) target=$($attempt.RequestedTarget) -> compiler host=$($attempt.CompilerHost) target=$($attempt.CompilerTarget): $($attempt.ClPath)"
+        } else {
+            "requested host=$($attempt.RequestedHost) target=$($attempt.RequestedTarget) -> $($attempt.Status)"
+        }
+    }
+
+    return " Tried Visual Studio environments: $($attempts -join '; ')."
 }
 
 function ConvertTo-EnvironmentMap {
@@ -116,6 +168,7 @@ function Import-VsDevEnvironment {
     foreach ($architecture in $architectures) {
         $environment = cmd.exe /s /c "`"$vsDevCmd`" -arch=$($architecture["TargetArch"]) -host_arch=$($architecture["HostArch"]) >nul && set"
         if ($LASTEXITCODE -ne 0) {
+            Add-VsDevEnvironmentAttempt $architecture $null "VsDevCmd failed"
             $environment = $null
             continue
         }
@@ -126,6 +179,7 @@ function Import-VsDevEnvironment {
             $pathValue = $environmentMap["PATH"]
         }
         $clPath = Get-ClFromPath $pathValue
+        Add-VsDevEnvironmentAttempt $architecture $clPath "no cl.exe on PATH"
 
         if (($env:PROCESSOR_ARCHITECTURE -eq "ARM64") -and ($clPath -match "\\bin\\Host[^\\]+\\arm64\\cl\.exe$")) {
             Import-EnvironmentMap $environmentMap
@@ -153,10 +207,12 @@ Import-VsDevEnvironment
 if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
     $clPath = (Get-Command cl -ErrorAction SilentlyContinue).Source
     if ($clPath -and (-not (Test-ClTargetsArm64))) {
-        throw "MSVC was found, but it is not targeting ARM64: $clPath. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details."
+        $clArchitecture = Get-ClArchitecture $clPath
+        $architectureDescription = if ($clArchitecture) { "compiler host=$($clArchitecture.Host) target=$($clArchitecture.Target)" } else { "unknown compiler host/target" }
+        throw "MSVC was found, but it is not targeting ARM64 ($architectureDescription): $clPath. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)"
     }
     if (-not $clPath) {
-        throw "MSVC ARM64 target tools were not found. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details."
+        throw "MSVC ARM64 target tools were not found. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)"
     }
 } else {
     Require-Command cl
