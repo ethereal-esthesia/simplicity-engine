@@ -54,8 +54,9 @@ winget install --id Git.Git -e
 winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --includeRecommended"
 ```
 
-For manual Windows builds, use an MSVC developer shell, such as the "Developer PowerShell for VS", so the compiler tools are on PATH.
-For native Windows ARM64 builds, use an MSVC developer shell that targets ARM64. An ARM64-hosted x64 compiler still builds x64 binaries; native ARM64 builds need the ARM64 target tools. Rerunning `winget install` only checks for an upgrade after Visual Studio Build Tools is installed; if Build Tools is already installed without the needed compiler target, uninstall it first with `winget uninstall --id Microsoft.VisualStudio.2022.BuildTools -e`, then rerun the Windows block above.
+- For manual Windows builds, use an MSVC developer shell, such as the "Developer PowerShell for VS", so the compiler tools are on PATH.
+- For native Windows ARM64 builds, use an MSVC developer shell that targets ARM64. An ARM64-hosted x64 compiler still builds x64 binaries.
+- Rerunning `winget install` only checks for an upgrade after Visual Studio Build Tools is installed. If Build Tools is already installed without the needed compiler target, uninstall it with `winget uninstall --id Microsoft.VisualStudio.2022.BuildTools -e`, then rerun the Windows block above.
 
 Debug (default):
 
