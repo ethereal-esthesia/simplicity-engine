@@ -60,13 +60,18 @@ winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--pass
 
 For manual Windows builds, use an MSVC developer shell, such as the "Developer PowerShell for VS", so the compiler tools are on PATH.
 The Visual Studio Build Tools command above installs the usual x64/x86 C++ tools.
-For native Windows ARM64 builds, add the ARM64 C++ tools during Visual Studio Build Tools installation:
+For a new native Windows ARM64 setup, include the ARM64 C++ tools during the initial Visual Studio Build Tools install:
 
 ```powershell
 winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --includeRecommended"
 ```
 
-If Visual Studio Build Tools is already installed, add the ARM64 component through the Visual Studio Installer's Modify flow.
+If Visual Studio Build Tools is already installed, rerunning `winget install` only checks for an upgrade and does not add new Visual Studio components. Add the ARM64 target tools with the Visual Studio Installer modify command:
+
+```cmd
+"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\setup.exe" modify --installPath "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools" --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --passive --norestart
+```
+
 An ARM64-hosted x64 compiler still builds x64 binaries; native ARM64 builds need the ARM64 target tools.
 
 Debug (default):
