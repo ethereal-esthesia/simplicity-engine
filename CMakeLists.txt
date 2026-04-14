@@ -4,7 +4,11 @@ if(POLICY CMP0135)
   cmake_policy(SET CMP0135 NEW)
 endif()
 
-project(simplicity_engine CXX)
+if(APPLE)
+  project(simplicity_engine C CXX OBJCXX)
+else()
+  project(simplicity_engine C CXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,6 +36,15 @@ target_link_libraries(hello_pixel PRIVATE SDL3::SDL3)
 target_link_libraries(smoke_sdl_init PRIVATE SDL3::SDL3)
 target_include_directories(smoke_fast_rng PRIVATE src)
 target_include_directories(test_fast_rng_vectors PRIVATE src)
+
+if(APPLE)
+  add_executable(macos_bookmark_probe probes/macos/bookmark_probe.mm)
+  target_compile_options(macos_bookmark_probe PRIVATE -fobjc-arc)
+  target_compile_definitions(
+    macos_bookmark_probe PRIVATE
+      SIMPLICITY_ENGINE_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+  target_link_libraries(macos_bookmark_probe PRIVATE "-framework AppKit" "-framework Foundation")
+endif()
 
 enable_testing()
 if(WIN32)

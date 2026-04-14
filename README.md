@@ -8,6 +8,7 @@ This repo currently includes a minimal SDL app that opens a window and renders a
 
 Project reference docs live in `docs/`.
 - Palette mapping reference: `docs/palette-mapping.md`
+- Movable file handle TODO: `docs/movable-file-handle-todo.md`
 
 ## Build Types
 
@@ -37,6 +38,25 @@ cmake --preset release
 cmake --build --preset release
 ./build/release/hello_pixel
 ```
+
+## Probes
+
+Probe sources live in `probes/`.
+
+### macOS Bookmark Probe
+
+On macOS, the repo builds a small probe for security-scoped folder bookmarks:
+
+```bash
+cmake --preset debug
+cmake --build --preset debug --target macos_bookmark_probe
+./build/debug/macos_bookmark_probe choose
+./build/debug/macos_bookmark_probe resolve
+./build/debug/macos_bookmark_probe load index.html
+```
+
+`choose` opens a folder picker and saves the base64 bookmark token to `local/probes/macos-bookmark-token.json`.
+`load` resolves that token, starts scoped access, opens the requested relative file with `NSFileHandle`, and prints a short preview.
 
 ## Containerized Build
 
