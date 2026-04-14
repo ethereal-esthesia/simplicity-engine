@@ -43,7 +43,7 @@ function Import-VsDevEnvironment {
         return
     }
 
-    $installPath = (& $vswhere -latest -products * -property installationPath | Select-Object -First 1)
+    $installPath = (& $vswhere -latest -products "*" -property installationPath | Select-Object -First 1)
     if (-not $installPath) {
         return
     }
@@ -90,6 +90,7 @@ Require-Command cmake
 Require-Command git
 Require-Command ninja
 Import-VsDevEnvironment
+Require-Command cl
 
 if (-not (Test-Path -LiteralPath $Repo -PathType Container)) {
     throw "Windows repo path does not exist: $Repo"
