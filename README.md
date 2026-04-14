@@ -24,19 +24,19 @@ Requirements:
 - C/C++ compiler
 - Internet access during configure (CMake fetches SDL automatically)
 
-**macOS:** Install Apple's command line compiler tools:
+**macOS Command Line Tools:** Install Apple's compiler tools:
 
 ```bash
 xcode-select --install
 ```
 
-**macOS:** Install build tools with Homebrew:
+**macOS Homebrew:** Install build tools with `brew`:
 
 ```bash
 brew install cmake ninja
 ```
 
-**macOS:** Install build tools with MacPorts:
+**macOS MacPorts:** Install build tools with `port`:
 
 ```bash
 sudo port install cmake ninja
