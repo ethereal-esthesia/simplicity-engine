@@ -56,8 +56,8 @@ function Import-VsDevEnvironment {
     $architectures = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
         @(
             @{ TargetArch = "arm64"; HostArch = "arm64" },
-            @{ TargetArch = "x64"; HostArch = "x64" },
-            @{ TargetArch = "x64"; HostArch = "arm64" }
+            @{ TargetArch = "arm64"; HostArch = "x64" },
+            @{ TargetArch = "arm64"; HostArch = "amd64" }
         )
     } else {
         @(
@@ -97,6 +97,13 @@ Require-Command git
 Require-Command ninja
 Import-VsDevEnvironment
 Require-Command cl
+
+if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+    $clPath = (Get-Command cl -ErrorAction SilentlyContinue).Source
+    if ($clPath -and ($clPath -notmatch "\\bin\\Host[^\\]+\\arm64\\cl\.exe$")) {
+        throw "MSVC was found, but it is not targeting ARM64: $clPath. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details."
+    }
+}
 
 if (-not (Test-Path -LiteralPath $Repo -PathType Container)) {
     throw "Windows repo path does not exist: $Repo"

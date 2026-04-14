@@ -55,10 +55,11 @@ Install build tools on Windows:
 winget install --id Kitware.CMake -e
 winget install --id Ninja-build.Ninja -e
 winget install --id Git.Git -e
-winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --includeRecommended"
 ```
 
 For manual Windows builds, use an MSVC developer shell, such as the "Developer PowerShell for VS", so the compiler tools are on PATH.
+On Windows ARM, install the ARM64 C++ tools so the VM builds native ARM64 binaries instead of x64 binaries.
 
 Debug (default):
 

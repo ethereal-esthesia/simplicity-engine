@@ -17,6 +17,9 @@ Install build tools inside Windows:
 - Git
 - A C++ compiler toolchain, such as Visual Studio Build Tools
 
+On Windows ARM, install the Visual Studio Build Tools ARM64 C++ tools so the
+guest builds native ARM64 binaries instead of x64 binaries.
+
 Create a local, gitignored script profile after the VM is registered:
 
 ```bash
