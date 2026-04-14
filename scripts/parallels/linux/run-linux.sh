@@ -109,25 +109,22 @@ elif [[ "$status" != *"running"* ]]; then
   prlctl start "$VM_NAME"
 fi
 
-test_arg=()
-launch_arg=()
-
-if [[ "$RUN_TESTS" -eq 1 ]]; then
-  test_arg=(--test)
-fi
-
-if [[ "$LAUNCH" -eq 1 ]]; then
-  launch_arg=(--launch)
-fi
-
 echo "Running Linux build in VM '${VM_NAME}' at '${GUEST_REPO}'"
 echo "Mac repo: ${REPO_ROOT}"
 
-prlctl exec "$VM_NAME" --current-user bash \
+cmd=(prlctl exec "$VM_NAME" --current-user bash \
   "${GUEST_REPO}/scripts/parallels/linux/guest-build-run.sh" \
   --repo "$GUEST_REPO" \
   --preset "$PRESET" \
   --target "$TARGET" \
-  --sync "$SYNC" \
-  "${test_arg[@]}" \
-  "${launch_arg[@]}"
+  --sync "$SYNC")
+
+if [[ "$RUN_TESTS" -eq 1 ]]; then
+  cmd+=(--test)
+fi
+
+if [[ "$LAUNCH" -eq 1 ]]; then
+  cmd+=(--launch)
+fi
+
+"${cmd[@]}"

@@ -114,16 +114,6 @@ elif [[ "$status" != *"running"* ]]; then
 fi
 
 guest_script="${GUEST_REPO}\\scripts\\parallels\\guest-build-run.ps1"
-test_arg=()
-launch_arg=()
-
-if [[ "$RUN_TESTS" -eq 1 ]]; then
-  test_arg=(-RunTests)
-fi
-
-if [[ "$LAUNCH" -eq 1 ]]; then
-  launch_arg=(-Launch)
-fi
 
 if [[ "$NATIVE_MODE" -eq 1 ]]; then
   prlctl set "$VM_NAME" \
@@ -136,13 +126,21 @@ fi
 echo "Running Windows build in VM '${VM_NAME}' at '${GUEST_REPO}'"
 echo "Mac repo: ${REPO_ROOT}"
 
-prlctl exec "$VM_NAME" --current-user powershell.exe \
+cmd=(prlctl exec "$VM_NAME" --current-user powershell.exe \
   -NoProfile \
   -ExecutionPolicy Bypass \
   -File "$guest_script" \
   -Repo "$GUEST_REPO" \
   -Preset "$PRESET" \
   -Target "$TARGET" \
-  -Sync "$SYNC" \
-  "${test_arg[@]}" \
-  "${launch_arg[@]}"
+  -Sync "$SYNC")
+
+if [[ "$RUN_TESTS" -eq 1 ]]; then
+  cmd+=(-RunTests)
+fi
+
+if [[ "$LAUNCH" -eq 1 ]]; then
+  cmd+=(-Launch)
+fi
+
+"${cmd[@]}"
