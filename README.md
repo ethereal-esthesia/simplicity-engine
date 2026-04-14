@@ -45,18 +45,7 @@ sudo apt update
 sudo apt install -y build-essential cmake ninja-build git
 ```
 
-**Windows x64/x86:** Install build tools for Intel/AMD Windows:
-
-```powershell
-winget install --id Kitware.CMake -e
-winget install --id Ninja-build.Ninja -e
-winget install --id Git.Git -e
-winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
-```
-
-For manual Windows builds, use an MSVC developer shell, such as the "Developer PowerShell for VS", so the compiler tools are on PATH.
-
-**Windows ARM64:** Install build tools for native Windows ARM64:
+**Windows:** Install build tools for x64/x86 and ARM64 targets:
 
 ```powershell
 winget install --id Kitware.CMake -e
@@ -65,31 +54,8 @@ winget install --id Git.Git -e
 winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --includeRecommended"
 ```
 
-For manual Windows ARM64 builds, use an MSVC developer shell that targets ARM64. An ARM64-hosted x64 compiler still builds x64 binaries; native ARM64 builds need the ARM64 target tools.
-
-**Windows (existing Visual Studio Build Tools):** Add compiler targets after Build Tools is installed:
-
-Add the Intel/AMD x64/x86 C++ workload:
-
-```cmd
-"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\setup.exe" modify --installPath "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools" --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive --norestart
-```
-
-Add the native ARM64 C++ target tools:
-
-```cmd
-"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\setup.exe" modify --installPath "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools" --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --passive --norestart
-```
-
-Rerunning `winget install` only checks for an upgrade after Visual Studio Build Tools is installed; it does not change the installed C++ component set.
-
-**Windows uninstall:** Remove Visual Studio Build Tools before switching variants:
-
-```cmd
-winget uninstall --id Microsoft.VisualStudio.2022.BuildTools -e
-```
-
-If the wrong Visual Studio Build Tools variant is installed and the modify commands do not produce the expected compiler target, uninstall it first, then rerun the matching Windows section above.
+For manual Windows builds, use an MSVC developer shell, such as the "Developer PowerShell for VS", so the compiler tools are on PATH.
+For native Windows ARM64 builds, use an MSVC developer shell that targets ARM64. An ARM64-hosted x64 compiler still builds x64 binaries; native ARM64 builds need the ARM64 target tools. Rerunning `winget install` only checks for an upgrade after Visual Studio Build Tools is installed; if Build Tools is already installed without the needed compiler target, uninstall it first with `winget uninstall --id Microsoft.VisualStudio.2022.BuildTools -e`, then rerun the Windows block above.
 
 Debug (default):
 
