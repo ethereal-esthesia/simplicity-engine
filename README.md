@@ -36,7 +36,7 @@ Or with MacPorts:
 sudo port install cmake ninja
 ```
 
-Install build tools on Debian/Ubuntu:
+Install build tools on APT-based Linux systems:
 
 ```bash
 sudo apt update
