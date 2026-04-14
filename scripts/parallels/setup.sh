@@ -145,14 +145,30 @@ clone_repo_to_guest() {
   local vm_name="$1"
   local guest_repo="$2"
   local repo_url="$3"
+  local clone_output
 
   if [[ "$TARGET" == "windows" ]]; then
-    prlctl exec "$vm_name" --current-user powershell.exe \
+    if clone_output="$(prlctl exec "$vm_name" --current-user powershell.exe \
       -NoProfile \
       -ExecutionPolicy Bypass \
       -Command '& { param($repo, $url) if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Write-Output git-not-found; exit 1 }; if (Test-Path -LiteralPath $repo) { Write-Output path-exists-but-not-repo; exit 1 }; $parent = Split-Path -Parent $repo; New-Item -ItemType Directory -Force -Path $parent | Out-Null; & git clone $url $repo }' \
       "$guest_repo" \
-      "$repo_url" </dev/null
+      "$repo_url" </dev/null 2>&1)"; then
+      printf '%s\n' "$clone_output"
+    else
+      case "$clone_output" in
+        *git-not-found*)
+          echo "Git was not found in the Windows VM. Please install Git for Windows, then rerun setup." >&2
+          ;;
+        *path-exists-but-not-repo*)
+          echo "Path exists but does not look like this repo: ${guest_repo}" >&2
+          ;;
+        *)
+          printf '%s\n' "$clone_output" >&2
+          ;;
+      esac
+      exit 1
+    fi
   else
     prlctl exec "$vm_name" --current-user bash -lc \
       'repo="$1"; url="$2"; if ! command -v git >/dev/null 2>&1; then echo "git was not found in the Linux VM. Install git, then rerun setup." >&2; exit 1; fi; if [ -e "$repo" ]; then echo "Path exists but does not look like this repo: $repo" >&2; exit 1; fi; mkdir -p "$(dirname "$repo")"; git clone "$url" "$repo"' \
