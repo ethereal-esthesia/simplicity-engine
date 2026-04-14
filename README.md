@@ -70,7 +70,10 @@ Useful variants:
 ./scripts/run.sh --no-launch
 ./scripts/run.sh --test
 ./scripts/run.sh --preset release
+./scripts/run.sh --console
 ```
+
+By default, app output is written to `logs/`. Use `--console` when you want the app attached to the current shell.
 
 Manual debug equivalent:
 

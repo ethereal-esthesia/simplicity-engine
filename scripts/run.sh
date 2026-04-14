@@ -5,7 +5,7 @@ PRESET="debug"
 TARGET="hello_pixel"
 RUN_TESTS=0
 LAUNCH=1
-FOREGROUND=0
+CONSOLE_OUTPUT=0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -24,7 +24,8 @@ Options:
   --no-test               Do not run ctest after build. Default.
   --launch                Launch the built executable. Default.
   --no-launch             Build only.
-  --foreground            Run the executable attached to this shell.
+  --console               Run the executable attached to this shell.
+  --foreground            Alias for --console.
   -h, --help              Show this help.
 EOF
 }
@@ -89,22 +90,56 @@ find_executable() {
   return 1
 }
 
+create_run_log() {
+  local logs_dir="${REPO_ROOT}/logs"
+  local timestamp
+  local log_path
+
+  mkdir -p "$logs_dir"
+  timestamp="$(date -u '+%Y%m%dT%H%M%SZ')"
+  log_path="${logs_dir}/run_${timestamp}.log"
+  if [[ -e "$log_path" ]]; then
+    log_path="${logs_dir}/run_${timestamp}_$$.log"
+  fi
+  printf '%s\n' "$log_path"
+}
+
 launch_executable() {
   local executable="$1"
+  local executable_dir
+  local executable_name
+  local log_path
+  local pid
 
-  if [[ "$FOREGROUND" -eq 1 ]]; then
-    exec "$executable"
+  if [[ "$CONSOLE_OUTPUT" -eq 1 ]]; then
+    echo "Running ${executable} with console output"
+    cd "$(dirname "$executable")"
+    exec "./$(basename "$executable")"
   fi
 
-  case "$(uname -s)" in
-    Darwin)
-      (cd "$(dirname "$executable")" && open -n "./$(basename "$executable")")
-      ;;
-    *)
-      (cd "$(dirname "$executable")" && "./$(basename "$executable")") &
-      echo "Launched ${executable} as pid $!"
-      ;;
-  esac
+  if [[ -d "$executable" ]]; then
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      open -n "$executable"
+      echo "Launched ${executable}"
+      return
+    fi
+
+    echo "Built target is a directory, not an executable: ${executable}" >&2
+    exit 1
+  fi
+
+  executable_dir="$(cd "$(dirname "$executable")" && pwd)"
+  executable_name="$(basename "$executable")"
+  log_path="$(create_run_log)"
+
+  (
+    cd "$executable_dir"
+    exec nohup "./$executable_name" >"$log_path" 2>&1 < /dev/null
+  ) &
+  pid="$!"
+
+  echo "Launched ${executable} as pid ${pid}"
+  echo "App log: ${log_path}"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -133,8 +168,8 @@ while [[ $# -gt 0 ]]; do
       LAUNCH=0
       shift
       ;;
-    --foreground)
-      FOREGROUND=1
+    --console|--foreground)
+      CONSOLE_OUTPUT=1
       LAUNCH=1
       shift
       ;;
@@ -179,6 +214,5 @@ if [[ "$LAUNCH" -eq 1 ]]; then
     exit 1
   }
 
-  echo "Launching ${executable}"
   launch_executable "$executable"
 fi
