@@ -69,6 +69,22 @@ host_branch() {
   git -C "$REPO_ROOT" branch --show-current
 }
 
+print_file_safely() {
+  local file="$1"
+  local line
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    printf '%s\n' "$line" || return 0
+  done < "$file"
+}
+
+file_contains() {
+  local file="$1"
+  local pattern="$2"
+
+  grep -Fq -- "$pattern" "$file"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --vm)
@@ -212,33 +228,27 @@ if [[ "$LAUNCH" -eq 1 ]]; then
   cmd+=(-Launch)
 fi
 
-if output="$("${cmd[@]}" 2>&1)"; then
-  case "$output" in
-    *"No CMAKE_C_COMPILER could be found."*|*"No CMAKE_CXX_COMPILER could be found."*)
-      parallels_install_hint windows compiler "rerun the Windows build" >&2
-      exit 1
-      ;;
-    *)
-      printf '%s\n' "$output"
-      ;;
-  esac
+build_output="$(mktemp "${TMPDIR:-/tmp}/simplicity-windows-build.XXXXXX")"
+trap 'rm -f "$build_output"' EXIT
+
+if "${cmd[@]}" >"$build_output" 2>&1; then
+  if file_contains "$build_output" "No CMAKE_C_COMPILER could be found." || file_contains "$build_output" "No CMAKE_CXX_COMPILER could be found."; then
+    parallels_install_hint windows compiler "rerun the Windows build" >&2
+    exit 1
+  fi
+
+  print_file_safely "$build_output"
 else
-  case "$output" in
-    *"Required command not found in Windows PATH: cmake"*|*"cmake was not found in the Windows VM"*)
-      parallels_install_hint windows cmake "rerun the Windows build" >&2
-      ;;
-    *"Required command not found in Windows PATH: git"*|*"git was not found in the Windows VM"*)
-      parallels_install_hint windows git "rerun the Windows build" >&2
-      ;;
-    *"Required command not found in Windows PATH: ninja"*|*"ninja was not found in the Windows VM"*)
-      parallels_install_hint windows ninja "rerun the Windows build" >&2
-      ;;
-    *"No CMAKE_C_COMPILER could be found."*|*"No CMAKE_CXX_COMPILER could be found."*)
-      parallels_install_hint windows compiler "rerun the Windows build" >&2
-      ;;
-    *)
-      printf '%s\n' "$output" >&2
-      ;;
-  esac
+  if file_contains "$build_output" "Required command not found in Windows PATH: cmake" || file_contains "$build_output" "cmake was not found in the Windows VM"; then
+    parallels_install_hint windows cmake "rerun the Windows build" >&2
+  elif file_contains "$build_output" "Required command not found in Windows PATH: git" || file_contains "$build_output" "git was not found in the Windows VM"; then
+    parallels_install_hint windows git "rerun the Windows build" >&2
+  elif file_contains "$build_output" "Required command not found in Windows PATH: ninja" || file_contains "$build_output" "ninja was not found in the Windows VM"; then
+    parallels_install_hint windows ninja "rerun the Windows build" >&2
+  elif file_contains "$build_output" "No CMAKE_C_COMPILER could be found." || file_contains "$build_output" "No CMAKE_CXX_COMPILER could be found."; then
+    parallels_install_hint windows compiler "rerun the Windows build" >&2
+  else
+    print_file_safely "$build_output" >&2
+  fi
   exit 1
 fi
