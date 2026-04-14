@@ -2,8 +2,10 @@ param(
     [string]$Repo = "C:\Users\shane\Project\simplicity-engine",
     [string]$Preset = "debug",
     [string]$Target = "hello_pixel",
-    [ValidateSet("none", "pull")]
+    [ValidateSet("none", "pull", "host")]
     [string]$Sync = "none",
+    [string]$HostRepo = "",
+    [string]$HostBranch = "",
     [switch]$RunTests,
     [switch]$Launch
 )
@@ -34,6 +36,37 @@ function Invoke-Checked {
     if ($LASTEXITCODE -ne 0) {
         throw "${Command} failed with exit code ${LASTEXITCODE}"
     }
+}
+
+function Invoke-HostSync {
+    param(
+        [string]$Repo,
+        [string]$HostRepo,
+        [string]$HostBranch
+    )
+
+    if (-not $HostRepo) {
+        throw "--sync host requires -HostRepo."
+    }
+    if (-not $HostBranch) {
+        throw "--sync host requires -HostBranch."
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $HostRepo ".git") -PathType Container)) {
+        Write-Output "host-repo-not-found"
+        throw "Mac shared repo was not found from the Windows VM: $HostRepo"
+    }
+
+    Set-Location -LiteralPath $Repo
+    & git remote get-url mac *> $null
+    if ($LASTEXITCODE -eq 0) {
+        Invoke-Checked git remote set-url mac $HostRepo
+    } else {
+        Invoke-Checked git remote add mac $HostRepo
+    }
+
+    Invoke-Checked git fetch mac "$($HostBranch):refs/remotes/mac/$HostBranch"
+    Invoke-Checked git checkout -f -B $HostBranch "refs/remotes/mac/$HostBranch"
+    Invoke-Checked git status --short --branch
 }
 
 function Get-ClArchitecture {
@@ -383,11 +416,14 @@ if (-not (Test-Path -LiteralPath $Repo -PathType Container)) {
 }
 
 Set-Location -LiteralPath $Repo
-Clear-StaleMsvcCMakeCache -BuildDir (Join-Path $Repo "build/$Preset") -ExpectedTarget $targetArch
 
-if ($Sync -eq "pull") {
+if ($Sync -eq "host") {
+    Invoke-HostSync -Repo $Repo -HostRepo $HostRepo -HostBranch $HostBranch
+} elseif ($Sync -eq "pull") {
     Invoke-Checked git pull --ff-only
 }
+
+Clear-StaleMsvcCMakeCache -BuildDir (Join-Path $Repo "build/$Preset") -ExpectedTarget $targetArch
 
 Invoke-Checked cmake --preset $Preset
 Invoke-Checked cmake --build --preset $Preset --target $Target

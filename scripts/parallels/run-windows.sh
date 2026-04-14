@@ -34,7 +34,7 @@ Options:
   --preset <name>         CMake preset to build. Default: debug
   --target <name>         CMake target to build. Default: hello_pixel
   --sync <host|pull|none> Sync step before build. Default: host
-                           host pulls from this Mac repo through a Parallels shared folder.
+                           host checks out this Mac repo branch through a Parallels shared folder.
   --host-repo <path>      Windows path to this Mac repo through Parallels sharing.
                            Default: \\Mac\Home\<host repo path relative to $HOME>
   --test                  Run ctest after build.
@@ -211,6 +211,7 @@ elif [[ "$status" != *"running"* ]]; then
 fi
 
 guest_script="${GUEST_REPO}\\scripts\\parallels\\guest-build-run.ps1"
+HOST_BRANCH=""
 
 if [[ "$NATIVE_MODE" -eq 1 ]]; then
   prlctl set "$VM_NAME" \
@@ -233,40 +234,10 @@ if [[ "$SYNC" == "host" ]]; then
     exit 1
   fi
 
+  guest_script="${HOST_REPO}\\scripts\\parallels\\guest-build-run.ps1"
+  append_log "host repo: ${HOST_REPO}"
+  append_log "host branch: ${HOST_BRANCH}"
   echo "Syncing Windows checkout from Mac shared repo '${HOST_REPO}' branch '${HOST_BRANCH}'"
-  if sync_output="$(prlctl exec "$VM_NAME" --current-user powershell.exe \
-    -WindowStyle Hidden \
-    -NoProfile \
-    -ExecutionPolicy Bypass \
-    -Command '& { param($repo, $hostRepo, $branch) function Invoke-Git { & git @args; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }; if (-not (Test-Path -LiteralPath (Join-Path $hostRepo ".git") -PathType Container)) { Write-Output host-repo-not-found; exit 1 }; Set-Location -LiteralPath $repo; & git remote get-url mac *> $null; if ($LASTEXITCODE -eq 0) { Invoke-Git remote set-url mac $hostRepo } else { Invoke-Git remote add mac $hostRepo }; Invoke-Git fetch mac "${branch}:refs/remotes/mac/${branch}"; Invoke-Git checkout -f -B $branch "refs/remotes/mac/${branch}"; Invoke-Git status --short --branch }' \
-    "$GUEST_REPO" \
-    "$HOST_REPO" \
-    "$HOST_BRANCH" </dev/null 2>&1)"; then
-    append_log "sync output:"
-    append_log "$sync_output"
-    append_log ""
-    if [[ "$CONSOLE_OUTPUT" -eq 1 ]]; then
-      printf '%s\n' "$sync_output"
-    fi
-  else
-    append_log "sync failed:"
-    append_log "$sync_output"
-    case "$sync_output" in
-      *host-repo-not-found*)
-        echo "Mac shared repo was not found from the Windows VM: ${HOST_REPO}" >&2
-        echo "Check Parallels shared folders, or pass --host-repo with the Windows-visible path." >&2
-        ;;
-      *)
-        if [[ "$CONSOLE_OUTPUT" -eq 1 ]]; then
-          printf '%s\n' "$sync_output" >&2
-        else
-          echo "Sync failed. See log: ${LOG_PATH}" >&2
-        fi
-        ;;
-    esac
-    exit 1
-  fi
-  GUEST_SYNC="none"
 fi
 
 cmd=(prlctl exec "$VM_NAME" --current-user powershell.exe \
@@ -278,6 +249,10 @@ cmd=(prlctl exec "$VM_NAME" --current-user powershell.exe \
   -Preset "$PRESET" \
   -Target "$TARGET" \
   -Sync "$GUEST_SYNC")
+
+if [[ "$SYNC" == "host" ]]; then
+  cmd+=(-HostRepo "$HOST_REPO" -HostBranch "$HOST_BRANCH")
+fi
 
 if [[ "$RUN_TESTS" -eq 1 ]]; then
   cmd+=(-RunTests)
@@ -309,6 +284,9 @@ else
   append_file_to_log "$build_output"
   if file_contains "$build_output" "Required command not found in Windows PATH: cmake" || file_contains "$build_output" "cmake was not found in the Windows VM"; then
     parallels_install_hint windows cmake "rerun the Windows build" >&2
+  elif file_contains "$build_output" "host-repo-not-found" || file_contains "$build_output" "Mac shared repo was not found from the Windows VM"; then
+    echo "Mac shared repo was not found from the Windows VM: ${HOST_REPO}" >&2
+    echo "Check Parallels shared folders, or pass --host-repo with the Windows-visible path." >&2
   elif file_contains "$build_output" "Required command not found in Windows PATH: git" || file_contains "$build_output" "git was not found in the Windows VM"; then
     parallels_install_hint windows git "rerun the Windows build" >&2
   elif file_contains "$build_output" "Required command not found in Windows PATH: ninja" || file_contains "$build_output" "ninja was not found in the Windows VM"; then
