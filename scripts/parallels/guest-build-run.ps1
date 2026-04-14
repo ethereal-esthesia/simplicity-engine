@@ -53,9 +53,29 @@ function Import-VsDevEnvironment {
         return
     }
 
-    $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
-    $environment = cmd.exe /s /c "`"$vsDevCmd`" -arch=$arch -host_arch=$arch >nul && set"
-    if ($LASTEXITCODE -ne 0) {
+    $architectures = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+        @(
+            @{ Target = "arm64"; Host = "arm64" },
+            @{ Target = "x64"; Host = "x64" },
+            @{ Target = "x64"; Host = "arm64" }
+        )
+    } else {
+        @(
+            @{ Target = "amd64"; Host = "amd64" },
+            @{ Target = "x64"; Host = "x64" }
+        )
+    }
+
+    $environment = $null
+    foreach ($architecture in $architectures) {
+        $environment = cmd.exe /s /c "`"$vsDevCmd`" -arch=$($architecture.Target) -host_arch=$($architecture.Host) >nul && set"
+        if ($LASTEXITCODE -eq 0) {
+            break
+        }
+        $environment = $null
+    }
+
+    if (-not $environment) {
         return
     }
 
