@@ -5,7 +5,7 @@ VM_NAME="Windows 11"
 GUEST_REPO='C:\Users\shane\Project\simplicity-engine'
 PRESET="debug"
 TARGET="hello_pixel"
-SYNC="none"
+SYNC="host"
 HOST_REPO=""
 RUN_TESTS=0
 LAUNCH=1
@@ -32,7 +32,7 @@ Options:
   --guest-repo <path>     Windows repo path. Default: C:\Users\shane\Project\simplicity-engine
   --preset <name>         CMake preset to build. Default: debug
   --target <name>         CMake target to build. Default: hello_pixel
-  --sync <none|pull|host> Sync step before build. Default: none
+  --sync <host|pull|none> Sync step before build. Default: host
                            host pulls from this Mac repo through a Parallels shared folder.
   --host-repo <path>      Windows path to this Mac repo through Parallels sharing.
                            Default: \\Mac\Home\<host repo path relative to $HOME>
@@ -127,8 +127,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$SYNC" != "none" && "$SYNC" != "pull" && "$SYNC" != "host" ]]; then
-  echo "--sync must be 'none', 'pull', or 'host'." >&2
+if [[ "$SYNC" != "host" && "$SYNC" != "pull" && "$SYNC" != "none" ]]; then
+  echo "--sync must be 'host', 'pull', or 'none'." >&2
   exit 2
 fi
 

@@ -32,6 +32,8 @@ writing `local/parallels/linux.env`.
 It uses the current Linux user's home directory plus the host repo path relative
 to the host home directory. For example, `/Users/shane/Project/simplicity-engine`
 defaults to `$HOME/Project/simplicity-engine` in Linux.
+It also writes the Linux-visible Parallels shared-folder path for the Mac repo,
+defaulting to `/media/psf/Home/<host repo path relative to $HOME>`.
 
 Install runtime/build dependencies needed by SDL on Linux if CMake reports missing packages. Common APT packages include:
 
@@ -49,21 +51,24 @@ From the macOS repo root:
 Common options:
 
 ```bash
+./scripts/parallels/linux/run-linux.sh --no-launch
 ./scripts/parallels/linux/run-linux.sh --vm "Debian 12"
 ./scripts/parallels/linux/run-linux.sh --sync pull
-./scripts/parallels/linux/run-linux.sh --sync host
-./scripts/parallels/linux/run-linux.sh --sync host --host-repo /media/psf/Home/Project/simplicity-engine
+./scripts/parallels/linux/run-linux.sh --sync none
+./scripts/parallels/linux/run-linux.sh --host-repo /media/psf/Home/Project/simplicity-engine
 ./scripts/parallels/linux/run-linux.sh --preset linux-release
 ./scripts/parallels/linux/run-linux.sh --target smoke_sdl_init --no-launch
 ./scripts/parallels/linux/run-linux.sh --test
 ./scripts/parallels/linux/run-linux.sh --guest-repo /home/shane/src/simplicity-engine
 ```
 
+By default, the runner fetches and fast-forwards from the Mac checkout through the configured Parallels shared folder before building.
 `--sync pull` runs `git pull --ff-only` inside the Linux checkout before building.
-`--sync host` fetches and fast-forwards from the Mac checkout through a Parallels shared folder before building. The default shared path is `/media/psf/Home/<host repo path relative to $HOME>`; pass `--host-repo` if your Linux VM sees the shared folder somewhere else.
+`--sync none` skips the sync step.
+`--host-repo` overrides the Linux-visible path to the Mac checkout if your VM sees the shared folder somewhere else.
 `--launch` runs the built executable inside the Linux desktop session after a successful build.
 
 ## Sync Notes
-The Linux checkout is a separate working copy. Commit and push from macOS before using `--sync pull`, or commit locally and use `--sync host` to pull from the Mac checkout without pushing.
+The Linux checkout is a separate working copy. The default sync pulls committed changes from the Mac checkout without pushing.
 
-`--sync host` still uses Git, so it syncs committed local changes. It does not copy uncommitted edits.
+The default host sync still uses Git, so it syncs committed local changes. It does not copy uncommitted edits.

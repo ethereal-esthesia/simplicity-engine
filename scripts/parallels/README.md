@@ -29,6 +29,8 @@ writing `local/parallels/windows.env`.
 It uses the current Windows user's profile directory plus the host repo path
 relative to the host home directory. For example, `/Users/shane/Project/simplicity-engine`
 defaults to `%USERPROFILE%\Project\simplicity-engine` in Windows.
+It also writes the Windows-visible Parallels shared-folder path for the Mac repo,
+defaulting to `\\Mac\Home\<host repo path relative to $HOME>`.
 
 ## Build and Run from macOS
 From the macOS repo root:
@@ -40,9 +42,10 @@ From the macOS repo root:
 Common options:
 
 ```bash
+./scripts/parallels/run-windows.sh --no-launch
 ./scripts/parallels/run-windows.sh --sync pull
-./scripts/parallels/run-windows.sh --sync host
-./scripts/parallels/run-windows.sh --sync host --host-repo '\\Mac\Home\Project\simplicity-engine'
+./scripts/parallels/run-windows.sh --sync none
+./scripts/parallels/run-windows.sh --host-repo '\\Mac\Home\Project\simplicity-engine'
 ./scripts/parallels/run-windows.sh --preset release
 ./scripts/parallels/run-windows.sh --target smoke_sdl_init --no-launch
 ./scripts/parallels/run-windows.sh --test
@@ -50,12 +53,14 @@ Common options:
 ./scripts/parallels/run-windows.sh --guest-repo 'C:\Users\shane\src\simplicity-engine'
 ```
 
+By default, the runner fetches and fast-forwards from the Mac checkout through the configured Parallels shared folder before building.
 `--sync pull` runs `git pull --ff-only` inside the Windows checkout before building.
-`--sync host` fetches and fast-forwards from the Mac checkout through a Parallels shared folder before building. The default shared path is `\\Mac\Home\<host repo path relative to $HOME>`; pass `--host-repo` if your Windows VM sees the shared folder somewhere else.
+`--sync none` skips the sync step.
+`--host-repo` overrides the Windows-visible path to the Mac checkout if your VM sees the shared folder somewhere else.
 `--launch` runs the built executable through Windows after a successful build.
 `--native` enables guest-to-host app sharing before launch so Windows app windows can integrate more naturally with macOS.
 
 ## Sync Notes
-The Windows checkout is a separate working copy. Commit and push from macOS before using `--sync pull`, or commit locally and use `--sync host` to pull from the Mac checkout without pushing.
+The Windows checkout is a separate working copy. The default sync pulls committed changes from the Mac checkout without pushing.
 
-`--sync host` still uses Git, so it syncs committed local changes. It does not copy uncommitted edits.
+The default host sync still uses Git, so it syncs committed local changes. It does not copy uncommitted edits.
