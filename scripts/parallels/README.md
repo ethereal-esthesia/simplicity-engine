@@ -55,10 +55,13 @@ Common options:
 ./scripts/parallels/run-windows.sh --target smoke_sdl_init --no-launch
 ./scripts/parallels/run-windows.sh --test
 ./scripts/parallels/run-windows.sh --native
+./scripts/parallels/run-windows.sh --console
 ./scripts/parallels/run-windows.sh --guest-repo 'C:\Users\shane\src\simplicity-engine'
 ```
 
 By default, the runner fetches and fast-forwards from the Mac checkout through the configured Parallels shared folder before building.
+Each run writes full Windows build output to a timestamped log under `logs/`.
+Use `--console` to also print the full Windows build output in the terminal.
 `--sync pull` runs `git pull --ff-only` inside the Windows checkout before building.
 `--sync none` skips the sync step.
 `--host-repo` overrides the Windows-visible path to the Mac checkout if your VM sees the shared folder somewhere else.

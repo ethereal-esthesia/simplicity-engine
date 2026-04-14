@@ -10,6 +10,7 @@ HOST_REPO=""
 RUN_TESTS=0
 LAUNCH=1
 NATIVE_MODE=0
+CONSOLE_OUTPUT=0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -41,6 +42,7 @@ Options:
   --launch                Launch the built executable. Default.
   --no-launch             Build only.
   --native                Enable guest-to-host app sharing before launch.
+  --console               Print full Windows build output. Default: write it to logs/.
   -h, --help              Show this help.
 EOF
 }
@@ -67,6 +69,33 @@ default_host_repo() {
 
 host_branch() {
   git -C "$REPO_ROOT" branch --show-current
+}
+
+create_run_log() {
+  local logs_dir="${REPO_ROOT}/logs"
+  local timestamp
+  local log_path
+
+  mkdir -p "$logs_dir"
+  timestamp="$(date -u '+%Y%m%dT%H%M%SZ')"
+  log_path="${logs_dir}/run_windows_${timestamp}.log"
+  if [[ -e "$log_path" ]]; then
+    log_path="${logs_dir}/run_windows_${timestamp}_$$.log"
+  fi
+  printf '%s\n' "$log_path"
+}
+
+append_log() {
+  local message="$1"
+
+  printf '%s\n' "$message" >> "$LOG_PATH"
+}
+
+append_file_to_log() {
+  local file="$1"
+
+  cat "$file" >> "$LOG_PATH"
+  printf '\n' >> "$LOG_PATH"
 }
 
 print_file_safely() {
@@ -131,6 +160,10 @@ while [[ $# -gt 0 ]]; do
       NATIVE_MODE=1
       shift
       ;;
+    --console)
+      CONSOLE_OUTPUT=1
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -152,6 +185,18 @@ if ! command -v prlctl >/dev/null 2>&1; then
   echo "prlctl was not found. Install Parallels Desktop command-line tools." >&2
   exit 1
 fi
+
+LOG_PATH="$(create_run_log)"
+append_log "run-windows started: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+append_log "vm: ${VM_NAME}"
+append_log "mac repo: ${REPO_ROOT}"
+append_log "guest repo: ${GUEST_REPO}"
+append_log "preset: ${PRESET}"
+append_log "target: ${TARGET}"
+append_log "sync: ${SYNC}"
+append_log "launch: ${LAUNCH}"
+append_log "run tests: ${RUN_TESTS}"
+append_log ""
 
 status="$(prlctl status "$VM_NAME" 2>/dev/null || true)"
 if [[ -z "$status" ]]; then
@@ -177,6 +222,7 @@ fi
 
 echo "Running Windows build in VM '${VM_NAME}' at '${GUEST_REPO}'"
 echo "Mac repo: ${REPO_ROOT}"
+echo "Log: ${LOG_PATH}"
 
 GUEST_SYNC="$SYNC"
 if [[ "$SYNC" == "host" ]]; then
@@ -195,15 +241,26 @@ if [[ "$SYNC" == "host" ]]; then
     "$GUEST_REPO" \
     "$HOST_REPO" \
     "$HOST_BRANCH" </dev/null 2>&1)"; then
-    printf '%s\n' "$sync_output"
+    append_log "sync output:"
+    append_log "$sync_output"
+    append_log ""
+    if [[ "$CONSOLE_OUTPUT" -eq 1 ]]; then
+      printf '%s\n' "$sync_output"
+    fi
   else
+    append_log "sync failed:"
+    append_log "$sync_output"
     case "$sync_output" in
       *host-repo-not-found*)
         echo "Mac shared repo was not found from the Windows VM: ${HOST_REPO}" >&2
         echo "Check Parallels shared folders, or pass --host-repo with the Windows-visible path." >&2
         ;;
       *)
-        printf '%s\n' "$sync_output" >&2
+        if [[ "$CONSOLE_OUTPUT" -eq 1 ]]; then
+          printf '%s\n' "$sync_output" >&2
+        else
+          echo "Sync failed. See log: ${LOG_PATH}" >&2
+        fi
         ;;
     esac
     exit 1
@@ -232,13 +289,22 @@ build_output="$(mktemp "${TMPDIR:-/tmp}/simplicity-windows-build.XXXXXX")"
 trap 'rm -f "$build_output"' EXIT
 
 if "${cmd[@]}" >"$build_output" 2>&1; then
+  append_log "build output:"
+  append_file_to_log "$build_output"
   if file_contains "$build_output" "No CMAKE_C_COMPILER could be found." || file_contains "$build_output" "No CMAKE_CXX_COMPILER could be found."; then
     parallels_install_hint windows compiler "rerun the Windows build" >&2
+    echo "Full log: ${LOG_PATH}" >&2
     exit 1
   fi
 
-  print_file_safely "$build_output"
+  if [[ "$CONSOLE_OUTPUT" -eq 1 ]]; then
+    print_file_safely "$build_output"
+  else
+    echo "Windows build succeeded. Full log: ${LOG_PATH}"
+  fi
 else
+  append_log "build failed:"
+  append_file_to_log "$build_output"
   if file_contains "$build_output" "Required command not found in Windows PATH: cmake" || file_contains "$build_output" "cmake was not found in the Windows VM"; then
     parallels_install_hint windows cmake "rerun the Windows build" >&2
   elif file_contains "$build_output" "Required command not found in Windows PATH: git" || file_contains "$build_output" "git was not found in the Windows VM"; then
@@ -248,7 +314,12 @@ else
   elif file_contains "$build_output" "No CMAKE_C_COMPILER could be found." || file_contains "$build_output" "No CMAKE_CXX_COMPILER could be found."; then
     parallels_install_hint windows compiler "rerun the Windows build" >&2
   else
-    print_file_safely "$build_output" >&2
+    if [[ "$CONSOLE_OUTPUT" -eq 1 ]]; then
+      print_file_safely "$build_output" >&2
+    else
+      echo "Windows build failed. See log: ${LOG_PATH}" >&2
+    fi
   fi
+  echo "Full log: ${LOG_PATH}" >&2
   exit 1
 fi
