@@ -4,12 +4,12 @@ These scripts let macOS drive a Linux build/test/run loop through Parallels.
 
 Default assumptions:
 - VM name: `Linux`
-- Linux repo path: `/home/shane/Project/simplicity-engine`
+- Linux repo path: `$HOME/Project/simplicity-engine`
 - CMake preset: `linux-debug`
 - Target: `hello_pixel`
 
 ## First-Time Setup
-Create or register a Linux VM in Parallels, then clone this repo inside the VM at the default path, or pass another path with `--guest-repo`.
+Create or register a Linux VM in Parallels, then clone this repo inside the VM at the setup script's default path, or enter another path when prompted.
 
 The commands below assume an APT-based, Debian-compatible Linux guest. For Fedora, Arch, Alpine, or another package family, install the equivalent packages with that distro's package manager.
 
@@ -25,6 +25,13 @@ Create a local, gitignored script profile after the VM is registered:
 ```bash
 ./scripts/parallels/setup.sh --target linux
 ```
+
+The setup script verifies the Linux repo path inside the VM. If the folder is
+missing, it can clone this repo's `origin` remote into the selected path before
+writing `local/parallels/linux.env`.
+It uses the current Linux user's home directory plus the host repo path relative
+to the host home directory. For example, `/Users/shane/Project/simplicity-engine`
+defaults to `$HOME/Project/simplicity-engine` in Linux.
 
 Install runtime/build dependencies needed by SDL on Linux if CMake reports missing packages. Common APT packages include:
 

@@ -4,12 +4,12 @@ These scripts let macOS drive a Windows build/run loop through Parallels.
 
 Default assumptions:
 - VM name: `Windows 11`
-- Windows repo path: `C:\Users\shane\Project\simplicity-engine`
+- Windows repo path: `%USERPROFILE%\Project\simplicity-engine`
 - CMake preset: `debug`
 - Target: `hello_pixel`
 
 ## First-Time Setup
-Clone this repo inside the Windows VM at the default path, or pass another path with `--guest-repo`.
+Clone this repo inside the Windows VM at the setup script's default path, or enter another path when prompted.
 
 Install build tools inside Windows:
 - CMake
@@ -22,6 +22,13 @@ Create a local, gitignored script profile after the VM is registered:
 ```bash
 ./scripts/parallels/setup.sh --target windows
 ```
+
+The setup script verifies the Windows repo path inside the VM. If the folder is
+missing, it can clone this repo's `origin` remote into the selected path before
+writing `local/parallels/windows.env`.
+It uses the current Windows user's profile directory plus the host repo path
+relative to the host home directory. For example, `/Users/shane/Project/simplicity-engine`
+defaults to `%USERPROFILE%\Project\simplicity-engine` in Windows.
 
 ## Build and Run from macOS
 From the macOS repo root:
