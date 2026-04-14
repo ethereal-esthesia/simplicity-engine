@@ -34,5 +34,5 @@ parallels_install_hint() {
       ;;
   esac
 
-  echo "${command_name} was not found in the ${platform_name} VM. Please install ${package_hint}, then ${rerun_hint}."
+  echo "${command_name} was not found in the ${platform_name} VM. Please install ${package_hint}, then ${rerun_hint}. See README.md for installation details."
 }

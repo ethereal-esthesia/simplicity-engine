@@ -19,5 +19,5 @@ function Get-ParallelsInstallHint {
         default { $Platform }
     }
 
-    "${Command} was not found in the ${platformName} VM. Please install ${package}, then ${RerunHint}."
+    "${Command} was not found in the ${platformName} VM. Please install ${package}, then ${RerunHint}. See README.md for installation details."
 }
