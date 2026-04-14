@@ -58,7 +58,7 @@ winget install --id Git.Git -e
 winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
 ```
 
-On Windows, use an MSVC developer shell, such as the "Developer PowerShell for VS", so the compiler tools are on PATH.
+For manual Windows builds, use an MSVC developer shell, such as the "Developer PowerShell for VS", so the compiler tools are on PATH.
 
 Debug (default):
 

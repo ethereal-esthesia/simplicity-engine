@@ -215,7 +215,7 @@ fi
 if output="$("${cmd[@]}" 2>&1)"; then
   case "$output" in
     *"No CMAKE_C_COMPILER could be found."*|*"No CMAKE_CXX_COMPILER could be found."*)
-      parallels_install_hint windows compiler "open an MSVC developer shell or rerun the Windows build after the compiler is on PATH" >&2
+      parallels_install_hint windows compiler "rerun the Windows build" >&2
       exit 1
       ;;
     *)
@@ -234,7 +234,7 @@ else
       parallels_install_hint windows ninja "rerun the Windows build" >&2
       ;;
     *"No CMAKE_C_COMPILER could be found."*|*"No CMAKE_CXX_COMPILER could be found."*)
-      parallels_install_hint windows compiler "open an MSVC developer shell or rerun the Windows build after the compiler is on PATH" >&2
+      parallels_install_hint windows compiler "rerun the Windows build" >&2
       ;;
     *)
       printf '%s\n' "$output" >&2
