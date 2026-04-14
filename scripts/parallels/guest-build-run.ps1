@@ -35,11 +35,6 @@ function Invoke-Checked {
     }
 }
 
-function Test-ClTargetsArm64 {
-    $clPath = (Get-Command cl -ErrorAction SilentlyContinue).Source
-    return ($clPath -and ($clPath -match "\\bin\\Host[^\\]+\\arm64\\cl\.exe$"))
-}
-
 function Get-ClArchitecture {
     param([string]$Path)
 
@@ -53,10 +48,64 @@ function Get-ClArchitecture {
     return $null
 }
 
+function Normalize-MsvcArchitecture {
+    param([string]$Architecture)
+
+    if (-not $Architecture) {
+        return $null
+    }
+
+    switch ($Architecture.ToLowerInvariant()) {
+        "amd64" { return "x64" }
+        default { return $Architecture.ToLowerInvariant() }
+    }
+}
+
+function Get-DesiredMsvcTarget {
+    switch ($env:PROCESSOR_ARCHITECTURE) {
+        "ARM64" { return "arm64" }
+        "AMD64" { return "x64" }
+        "x86" { return "x86" }
+        default { return "x64" }
+    }
+}
+
+function Get-ClReportedTarget {
+    param([string[]]$Output)
+
+    foreach ($line in $Output) {
+        if ($line -match "Compiler Version .+ for ([A-Za-z0-9_]+)") {
+            return Normalize-MsvcArchitecture $Matches[1]
+        }
+    }
+
+    return $null
+}
+
+function Get-CurrentClReportedTarget {
+    if (-not (Get-Command cl -ErrorAction SilentlyContinue)) {
+        return $null
+    }
+
+    $output = & cl /Bv 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        return $null
+    }
+
+    return Get-ClReportedTarget $output
+}
+
+function Test-ClTargets {
+    param([string]$Target)
+
+    return ((Get-CurrentClReportedTarget) -eq (Normalize-MsvcArchitecture $Target))
+}
+
 function Add-VsDevEnvironmentAttempt {
     param(
         [hashtable]$Architecture,
         [string]$ClPath,
+        [string]$ReportedTarget,
         [string]$Status
     )
 
@@ -70,6 +119,7 @@ function Add-VsDevEnvironmentAttempt {
         RequestedTarget = $Architecture["TargetArch"]
         CompilerHost = if ($clArchitecture) { $clArchitecture.Host } else { $null }
         CompilerTarget = if ($clArchitecture) { $clArchitecture.Target } else { $null }
+        ReportedTarget = $ReportedTarget
         ClPath = $ClPath
         Status = $Status
     }
@@ -81,8 +131,10 @@ function Format-VsDevEnvironmentAttempts {
     }
 
     $attempts = foreach ($attempt in $script:VsDevEnvironmentAttempts) {
-        if ($attempt.ClPath) {
-            "requested host=$($attempt.RequestedHost) target=$($attempt.RequestedTarget) -> compiler host=$($attempt.CompilerHost) target=$($attempt.CompilerTarget): $($attempt.ClPath)"
+        if ($attempt.ClPath -and $attempt.ReportedTarget) {
+            "requested host=$($attempt.RequestedHost) target=$($attempt.RequestedTarget) -> cl reports target=$($attempt.ReportedTarget), path host=$($attempt.CompilerHost) target=$($attempt.CompilerTarget): $($attempt.ClPath)"
+        } elseif ($attempt.ClPath) {
+            "requested host=$($attempt.RequestedHost) target=$($attempt.RequestedTarget) -> $($attempt.Status), path host=$($attempt.CompilerHost) target=$($attempt.CompilerTarget): $($attempt.ClPath)"
         } else {
             "requested host=$($attempt.RequestedHost) target=$($attempt.RequestedTarget) -> $($attempt.Status)"
         }
@@ -155,6 +207,20 @@ function Get-ClFromPath {
     return $null
 }
 
+function Invoke-VsDevClProbe {
+    param(
+        [string]$VsDevCmd,
+        [hashtable]$Architecture
+    )
+
+    $output = cmd.exe /s /c "`"$VsDevCmd`" -arch=$($Architecture["TargetArch"]) -host_arch=$($Architecture["HostArch"]) >nul && cl /Bv 2>&1"
+    if ($LASTEXITCODE -ne 0) {
+        return $null
+    }
+
+    return Get-ClReportedTarget $output
+}
+
 function Import-EnvironmentMap {
     param([hashtable]$Environment)
 
@@ -164,11 +230,8 @@ function Import-EnvironmentMap {
 }
 
 function Import-VsDevEnvironment {
-    if (($env:PROCESSOR_ARCHITECTURE -ne "ARM64") -and (Get-Command cl -ErrorAction SilentlyContinue)) {
-        return
-    }
-
-    if (($env:PROCESSOR_ARCHITECTURE -eq "ARM64") -and (Test-ClTargetsArm64)) {
+    $targetArch = Get-DesiredMsvcTarget
+    if ((Get-Command cl -ErrorAction SilentlyContinue) -and (Test-ClTargets $targetArch)) {
         return
     }
 
@@ -177,8 +240,18 @@ function Import-VsDevEnvironment {
         return
     }
 
-    $installPath = (& $vswhere -latest -products "*" -property installationPath | Select-Object -First 1)
+    $requiredComponent = if ($targetArch -eq "arm64") {
+        "Microsoft.VisualStudio.Component.VC.Tools.ARM64"
+    } else {
+        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+    }
+
+    $installPath = (& $vswhere -latest -products "*" -requires $requiredComponent -property installationPath | Select-Object -First 1)
     if (-not $installPath) {
+        $fallbackInstallPath = (& $vswhere -latest -products "*" -property installationPath | Select-Object -First 1)
+        if ($fallbackInstallPath) {
+            $script:InstalledMsvcCompilers = @(Get-InstalledMsvcCompilers $fallbackInstallPath)
+        }
         return
     }
     $script:InstalledMsvcCompilers = @(Get-InstalledMsvcCompilers $installPath)
@@ -188,24 +261,31 @@ function Import-VsDevEnvironment {
         return
     }
 
-    $architectures = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+    $hostArchitectures = if ($targetArch -eq "arm64") {
         @(
-            @{ TargetArch = "arm64"; HostArch = "arm64" },
-            @{ TargetArch = "arm64"; HostArch = "x64" },
-            @{ TargetArch = "arm64"; HostArch = "amd64" }
+            "arm64",
+            "x64",
+            "amd64"
+        )
+    } elseif ($targetArch -eq "x86") {
+        @(
+            "x86",
+            "x64",
+            "amd64"
         )
     } else {
         @(
-            @{ TargetArch = "amd64"; HostArch = "amd64" },
-            @{ TargetArch = "x64"; HostArch = "x64" }
+            "x64",
+            "amd64"
         )
     }
 
     $environment = $null
-    foreach ($architecture in $architectures) {
+    foreach ($hostArch in $hostArchitectures) {
+        $architecture = @{ TargetArch = $targetArch; HostArch = $hostArch }
         $environment = cmd.exe /s /c "`"$vsDevCmd`" -arch=$($architecture["TargetArch"]) -host_arch=$($architecture["HostArch"]) >nul && set"
         if ($LASTEXITCODE -ne 0) {
-            Add-VsDevEnvironmentAttempt $architecture $null "VsDevCmd failed"
+            Add-VsDevEnvironmentAttempt $architecture $null $null "VsDevCmd failed"
             $environment = $null
             continue
         }
@@ -216,14 +296,10 @@ function Import-VsDevEnvironment {
             $pathValue = $environmentMap["PATH"]
         }
         $clPath = Get-ClFromPath $pathValue
-        Add-VsDevEnvironmentAttempt $architecture $clPath "no cl.exe on PATH"
+        $reportedTarget = Invoke-VsDevClProbe $vsDevCmd $architecture
+        Add-VsDevEnvironmentAttempt $architecture $clPath $reportedTarget "cl.exe did not report a target"
 
-        if (($env:PROCESSOR_ARCHITECTURE -eq "ARM64") -and ($clPath -match "\\bin\\Host[^\\]+\\arm64\\cl\.exe$")) {
-            Import-EnvironmentMap $environmentMap
-            return
-        }
-
-        if (($env:PROCESSOR_ARCHITECTURE -ne "ARM64") -and $clPath) {
+        if ($reportedTarget -eq $targetArch) {
             Import-EnvironmentMap $environmentMap
             return
         }
@@ -241,18 +317,17 @@ Require-Command git
 Require-Command ninja
 Import-VsDevEnvironment
 
-if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
-    $clPath = (Get-Command cl -ErrorAction SilentlyContinue).Source
-    if ($clPath -and (-not (Test-ClTargetsArm64))) {
-        $clArchitecture = Get-ClArchitecture $clPath
-        $architectureDescription = if ($clArchitecture) { "compiler host=$($clArchitecture.Host) target=$($clArchitecture.Target)" } else { "unknown compiler host/target" }
-        throw "MSVC was found, but it is not targeting ARM64 ($architectureDescription): $clPath. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)$(Format-InstalledMsvcCompilers)"
-    }
-    if (-not $clPath) {
-        throw "MSVC ARM64 target tools were not found. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)$(Format-InstalledMsvcCompilers)"
-    }
-} else {
-    Require-Command cl
+$targetArch = Get-DesiredMsvcTarget
+$clPath = (Get-Command cl -ErrorAction SilentlyContinue).Source
+if (-not $clPath) {
+    throw "MSVC ${targetArch} target tools were not found. Install Visual Studio Build Tools with the C++ workload, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)$(Format-InstalledMsvcCompilers)"
+}
+
+$reportedTarget = Get-CurrentClReportedTarget
+if ($reportedTarget -ne $targetArch) {
+    $clArchitecture = Get-ClArchitecture $clPath
+    $architectureDescription = if ($clArchitecture) { "path host=$($clArchitecture.Host) target=$($clArchitecture.Target)" } else { "unknown compiler path host/target" }
+    throw "MSVC was found, but cl reports target=${reportedTarget}; expected target=${targetArch} ($architectureDescription): $clPath. Install Visual Studio Build Tools with the needed C++ target tools, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)$(Format-InstalledMsvcCompilers)"
 }
 
 if (-not (Test-Path -LiteralPath $Repo -PathType Container)) {
