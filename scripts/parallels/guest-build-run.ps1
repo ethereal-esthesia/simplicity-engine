@@ -88,7 +88,7 @@ function Get-CurrentClReportedTarget {
         return $null
     }
 
-    $output = & cl /Bv 2>&1
+    $output = cmd.exe /s /c "cl /Bv 2>&1"
     return Get-ClReportedTarget $output
 }
 
