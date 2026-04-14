@@ -67,13 +67,29 @@ winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--pass
 
 For manual Windows ARM64 builds, use an MSVC developer shell that targets ARM64. An ARM64-hosted x64 compiler still builds x64 binaries; native ARM64 builds need the ARM64 target tools.
 
+**Windows (existing Visual Studio Build Tools):** Add compiler targets after Build Tools is installed:
+
+Add the Intel/AMD x64/x86 C++ workload:
+
+```cmd
+"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\setup.exe" modify --installPath "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools" --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive --norestart
+```
+
+Add the native ARM64 C++ target tools:
+
+```cmd
+"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\setup.exe" modify --installPath "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools" --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --passive --norestart
+```
+
+Rerunning `winget install` only checks for an upgrade after Visual Studio Build Tools is installed; it does not change the installed C++ component set.
+
 **Windows uninstall:** Remove Visual Studio Build Tools before switching variants:
 
 ```cmd
 winget uninstall --id Microsoft.VisualStudio.2022.BuildTools -e
 ```
 
-Rerunning `winget install` only checks for an upgrade after Visual Studio Build Tools is installed; it does not change the installed C++ component set. If the wrong Visual Studio Build Tools variant is installed, uninstall it first, then rerun the matching Windows section above.
+If the wrong Visual Studio Build Tools variant is installed and the modify commands do not produce the expected compiler target, uninstall it first, then rerun the matching Windows section above.
 
 Debug (default):
 
