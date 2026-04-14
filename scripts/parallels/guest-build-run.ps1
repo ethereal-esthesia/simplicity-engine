@@ -38,6 +38,43 @@ function Test-ClTargetsArm64 {
     return ($clPath -and ($clPath -match "\\bin\\Host[^\\]+\\arm64\\cl\.exe$"))
 }
 
+function ConvertTo-EnvironmentMap {
+    param([string[]]$Environment)
+
+    $map = @{}
+    foreach ($line in $Environment) {
+        if ($line -match "^([^=]+)=(.*)$") {
+            $map[$Matches[1]] = $Matches[2]
+        }
+    }
+    return $map
+}
+
+function Get-ClFromPath {
+    param([string]$PathValue)
+
+    foreach ($pathEntry in ($PathValue -split ";")) {
+        if (-not $pathEntry) {
+            continue
+        }
+
+        $candidate = Join-Path $pathEntry "cl.exe"
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Import-EnvironmentMap {
+    param([hashtable]$Environment)
+
+    foreach ($entry in $Environment.GetEnumerator()) {
+        [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, "Process")
+    }
+}
+
 function Import-VsDevEnvironment {
     if (($env:PROCESSOR_ARCHITECTURE -ne "ARM64") -and (Get-Command cl -ErrorAction SilentlyContinue)) {
         return
@@ -83,17 +120,20 @@ function Import-VsDevEnvironment {
             continue
         }
 
-        foreach ($line in $environment) {
-            if ($line -match "^([^=]+)=(.*)$") {
-                [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], "Process")
-            }
+        $environmentMap = ConvertTo-EnvironmentMap $environment
+        $pathValue = $environmentMap["Path"]
+        if (-not $pathValue) {
+            $pathValue = $environmentMap["PATH"]
         }
+        $clPath = Get-ClFromPath $pathValue
 
-        if (($env:PROCESSOR_ARCHITECTURE -eq "ARM64") -and (Test-ClTargetsArm64)) {
+        if (($env:PROCESSOR_ARCHITECTURE -eq "ARM64") -and ($clPath -match "\\bin\\Host[^\\]+\\arm64\\cl\.exe$")) {
+            Import-EnvironmentMap $environmentMap
             return
         }
 
-        if (($env:PROCESSOR_ARCHITECTURE -ne "ARM64") -and (Get-Command cl -ErrorAction SilentlyContinue)) {
+        if (($env:PROCESSOR_ARCHITECTURE -ne "ARM64") -and $clPath) {
+            Import-EnvironmentMap $environmentMap
             return
         }
 
@@ -109,13 +149,17 @@ Require-Command cmake
 Require-Command git
 Require-Command ninja
 Import-VsDevEnvironment
-Require-Command cl
 
 if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
     $clPath = (Get-Command cl -ErrorAction SilentlyContinue).Source
     if ($clPath -and (-not (Test-ClTargetsArm64))) {
         throw "MSVC was found, but it is not targeting ARM64: $clPath. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details."
     }
+    if (-not $clPath) {
+        throw "MSVC ARM64 target tools were not found. Install the Visual Studio Build Tools ARM64 C++ tools, then rerun the Windows build. See README.md for installation details."
+    }
+} else {
+    Require-Command cl
 }
 
 if (-not (Test-Path -LiteralPath $Repo -PathType Container)) {
