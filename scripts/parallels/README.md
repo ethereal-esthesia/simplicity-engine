@@ -59,7 +59,7 @@ Common options:
 ./scripts/parallels/run-windows.sh --guest-repo 'C:\Users\shane\src\simplicity-engine'
 ```
 
-By default, the runner fetches and fast-forwards from the Mac checkout through the configured Parallels shared folder before building.
+By default, the runner fetches from the Mac checkout through the configured Parallels shared folder and checks out that branch in the Windows VM before building.
 Each run writes full Windows build output to a timestamped log under `logs/`.
 Use `--console` to also print the full Windows build output in the terminal.
 `--sync pull` runs `git pull --ff-only` inside the Windows checkout before building.
@@ -69,6 +69,6 @@ Use `--console` to also print the full Windows build output in the terminal.
 `--native` enables guest-to-host app sharing before launch so Windows app windows can integrate more naturally with macOS.
 
 ## Sync Notes
-The Windows checkout is a separate working copy. The default sync pulls committed changes from the Mac checkout without pushing.
+The Windows checkout is a separate working copy. The default sync checks out committed changes from the Mac checkout without pushing.
 
-The default host sync still uses Git, so it syncs committed local changes. It does not copy uncommitted edits.
+The default host sync still uses Git, so it syncs committed local changes. It does not copy uncommitted edits. Local tracked edits in the Windows checkout may be overwritten by the default host sync; use `--sync none` when you intentionally want to keep the guest checkout as-is.
