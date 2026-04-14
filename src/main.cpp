@@ -1,8 +1,11 @@
-#define SDL_MAIN_HANDLED
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 #include <cstdio>
 
-int main() {
+int main(int argc, char* argv[]) {
+    (void)argc;
+    (void)argv;
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
