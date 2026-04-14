@@ -12,6 +12,7 @@ $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\install-hints.ps1"
 $script:VsDevEnvironmentAttempts = @()
 $script:InstalledMsvcCompilers = @()
+$script:ImportedVsDevEnvironment = $false
 
 function Require-Command {
     param([string]$Name)
@@ -301,6 +302,7 @@ function Import-VsDevEnvironment {
 
         if ($reportedTarget -eq $targetArch) {
             Import-EnvironmentMap $environmentMap
+            $script:ImportedVsDevEnvironment = $true
             return
         }
 
@@ -319,15 +321,24 @@ Import-VsDevEnvironment
 
 $targetArch = Get-DesiredMsvcTarget
 $clPath = (Get-Command cl -ErrorAction SilentlyContinue).Source
-if (-not $clPath) {
+if ($script:VsDevEnvironmentAttempts -and -not $script:ImportedVsDevEnvironment) {
     throw "MSVC ${targetArch} target tools were not found. Install Visual Studio Build Tools with the C++ workload, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)$(Format-InstalledMsvcCompilers)"
 }
 
-$reportedTarget = Get-CurrentClReportedTarget
-if ($reportedTarget -ne $targetArch) {
+if ($clPath -and $script:ImportedVsDevEnvironment) {
+    $reportedTarget = Get-CurrentClReportedTarget
+    if ($reportedTarget -ne $targetArch) {
+        $clArchitecture = Get-ClArchitecture $clPath
+        $architectureDescription = if ($clArchitecture) { "path host=$($clArchitecture.Host) target=$($clArchitecture.Target)" } else { "unknown compiler path host/target" }
+        throw "MSVC was found, but cl reports target=${reportedTarget}; expected target=${targetArch} ($architectureDescription): $clPath. Install Visual Studio Build Tools with the needed C++ target tools, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)$(Format-InstalledMsvcCompilers)"
+    }
+}
+
+if ($clPath -and -not $script:ImportedVsDevEnvironment -and $script:InstalledMsvcCompilers) {
+    $reportedTarget = Get-CurrentClReportedTarget
     $clArchitecture = Get-ClArchitecture $clPath
     $architectureDescription = if ($clArchitecture) { "path host=$($clArchitecture.Host) target=$($clArchitecture.Target)" } else { "unknown compiler path host/target" }
-    throw "MSVC was found, but cl reports target=${reportedTarget}; expected target=${targetArch} ($architectureDescription): $clPath. Install Visual Studio Build Tools with the needed C++ target tools, then rerun the Windows build. See README.md for installation details.$(Format-VsDevEnvironmentAttempts)$(Format-InstalledMsvcCompilers)"
+    Write-Warning "Using existing compiler environment; cl reports target=${reportedTarget}, expected target=${targetArch} ($architectureDescription): $clPath."
 }
 
 if (-not (Test-Path -LiteralPath $Repo -PathType Container)) {
