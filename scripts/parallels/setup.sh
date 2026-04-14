@@ -134,7 +134,7 @@ guest_repo_exists() {
     prlctl exec "$vm_name" --current-user powershell.exe \
       -NoProfile \
       -ExecutionPolicy Bypass \
-      -Command '$repo = $args[0]; if ((Test-Path -LiteralPath $repo -PathType Container) -and (Test-Path -LiteralPath (Join-Path $repo "scripts\parallels\setup.sh") -PathType Leaf)) { exit 0 } else { exit 1 }' \
+      -Command '& { param($repo) if ((Test-Path -LiteralPath $repo -PathType Container) -and (Test-Path -LiteralPath (Join-Path $repo "scripts\parallels\setup.sh") -PathType Leaf)) { exit 0 } else { exit 1 } }' \
       "$guest_repo" >/dev/null 2>&1 </dev/null
   else
     prlctl exec "$vm_name" --current-user test -f "${guest_repo}/scripts/parallels/setup.sh" >/dev/null 2>&1 </dev/null
@@ -150,7 +150,7 @@ clone_repo_to_guest() {
     prlctl exec "$vm_name" --current-user powershell.exe \
       -NoProfile \
       -ExecutionPolicy Bypass \
-      -Command '$repo = $args[0]; $url = $args[1]; if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Write-Error "git was not found in the Windows VM. Install Git, then rerun setup."; exit 1 }; if (Test-Path -LiteralPath $repo) { Write-Error "Path exists but does not look like this repo: $repo"; exit 1 }; $parent = Split-Path -Parent $repo; New-Item -ItemType Directory -Force -Path $parent | Out-Null; git clone $url $repo' \
+      -Command '& { param($repo, $url) if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Write-Output git-not-found; exit 1 }; if (Test-Path -LiteralPath $repo) { Write-Output path-exists-but-not-repo; exit 1 }; $parent = Split-Path -Parent $repo; New-Item -ItemType Directory -Force -Path $parent | Out-Null; & git clone $url $repo }' \
       "$guest_repo" \
       "$repo_url" </dev/null
   else
