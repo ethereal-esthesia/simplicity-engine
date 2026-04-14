@@ -73,7 +73,7 @@ Useful variants:
 ./scripts/run.sh --console
 ```
 
-By default, app output is written to `logs/`. Use `--console` when you want the app attached to the current shell.
+By default, build and app output is written to `logs/`. Use `--console` when you want the full output attached to the current shell.
 
 Manual debug equivalent:
 
