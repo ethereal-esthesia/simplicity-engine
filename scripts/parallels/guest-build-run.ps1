@@ -89,10 +89,6 @@ function Get-CurrentClReportedTarget {
     }
 
     $output = & cl /Bv 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        return $null
-    }
-
     return Get-ClReportedTarget $output
 }
 
@@ -215,10 +211,6 @@ function Invoke-VsDevClProbe {
     )
 
     $output = cmd.exe /s /c "call `"$VsDevCmd`" -arch=$($Architecture["TargetArch"]) -host_arch=$($Architecture["HostArch"]) >nul && cl /Bv 2>&1"
-    if ($LASTEXITCODE -ne 0) {
-        return $null
-    }
-
     return Get-ClReportedTarget $output
 }
 
