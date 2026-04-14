@@ -222,6 +222,51 @@ function Import-EnvironmentMap {
     }
 }
 
+function Get-CMakeCachedCompilerPath {
+    param([string]$BuildDir)
+
+    $cachePath = Join-Path $BuildDir "CMakeCache.txt"
+    if (-not (Test-Path -LiteralPath $cachePath -PathType Leaf)) {
+        return $null
+    }
+
+    $match = Select-String -LiteralPath $cachePath -Pattern "^CMAKE_CXX_COMPILER:FILEPATH=(.+)$" | Select-Object -First 1
+    if (-not $match) {
+        return $null
+    }
+
+    return $match.Matches[0].Groups[1].Value
+}
+
+function Clear-StaleMsvcCMakeCache {
+    param(
+        [string]$BuildDir,
+        [string]$ExpectedTarget
+    )
+
+    if (-not $script:ImportedVsDevEnvironment) {
+        return
+    }
+
+    $compilerPath = Get-CMakeCachedCompilerPath $BuildDir
+    if (-not $compilerPath) {
+        return
+    }
+
+    $compilerArchitecture = Get-ClArchitecture ($compilerPath -replace "/", "\")
+    if (-not $compilerArchitecture) {
+        return
+    }
+
+    $cachedTarget = Normalize-MsvcArchitecture $compilerArchitecture.Target
+    if ($cachedTarget -eq $ExpectedTarget) {
+        return
+    }
+
+    Write-Warning "Removing stale CMake build directory '$BuildDir'; it was configured for MSVC target '$cachedTarget', but this VM is using target '$ExpectedTarget'."
+    Remove-Item -LiteralPath $BuildDir -Recurse -Force
+}
+
 function Import-VsDevEnvironment {
     $targetArch = Get-DesiredMsvcTarget
     if ((Get-Command cl -ErrorAction SilentlyContinue) -and (Test-ClTargets $targetArch)) {
@@ -338,6 +383,7 @@ if (-not (Test-Path -LiteralPath $Repo -PathType Container)) {
 }
 
 Set-Location -LiteralPath $Repo
+Clear-StaleMsvcCMakeCache -BuildDir (Join-Path $Repo "build/$Preset") -ExpectedTarget $targetArch
 
 if ($Sync -eq "pull") {
     Invoke-Checked git pull --ff-only
