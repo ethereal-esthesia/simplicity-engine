@@ -214,7 +214,7 @@ function Invoke-VsDevClProbe {
         [hashtable]$Architecture
     )
 
-    $output = cmd.exe /s /c "`"$VsDevCmd`" -arch=$($Architecture["TargetArch"]) -host_arch=$($Architecture["HostArch"]) >nul && cl /Bv 2>&1"
+    $output = cmd.exe /s /c "call `"$VsDevCmd`" -arch=$($Architecture["TargetArch"]) -host_arch=$($Architecture["HostArch"]) >nul && cl /Bv 2>&1"
     if ($LASTEXITCODE -ne 0) {
         return $null
     }
@@ -284,7 +284,7 @@ function Import-VsDevEnvironment {
     $environment = $null
     foreach ($hostArch in $hostArchitectures) {
         $architecture = @{ TargetArch = $targetArch; HostArch = $hostArch }
-        $environment = cmd.exe /s /c "`"$vsDevCmd`" -arch=$($architecture["TargetArch"]) -host_arch=$($architecture["HostArch"]) >nul && set"
+        $environment = cmd.exe /s /c "call `"$vsDevCmd`" -arch=$($architecture["TargetArch"]) -host_arch=$($architecture["HostArch"]) >nul && set"
         if ($LASTEXITCODE -ne 0) {
             Add-VsDevEnvironmentAttempt $architecture $null $null "VsDevCmd failed"
             $environment = $null
