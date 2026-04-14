@@ -12,6 +12,10 @@ NATIVE_MODE=0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+# shellcheck source=scripts/parallels/install-hints.sh
+source "${SCRIPT_DIR}/install-hints.sh"
+
 LOCAL_CONFIG="${REPO_ROOT}/local/parallels/windows.env"
 if [[ -f "$LOCAL_CONFIG" ]]; then
   # shellcheck disable=SC1090
@@ -143,4 +147,22 @@ if [[ "$LAUNCH" -eq 1 ]]; then
   cmd+=(-Launch)
 fi
 
-"${cmd[@]}"
+if output="$("${cmd[@]}" 2>&1)"; then
+  printf '%s\n' "$output"
+else
+  case "$output" in
+    *"Required command not found in Windows PATH: cmake"*|*"cmake was not found in the Windows VM"*)
+      parallels_install_hint windows cmake "rerun the Windows build" >&2
+      ;;
+    *"Required command not found in Windows PATH: git"*|*"git was not found in the Windows VM"*)
+      parallels_install_hint windows git "rerun the Windows build" >&2
+      ;;
+    *"Required command not found in Windows PATH: ninja"*|*"ninja was not found in the Windows VM"*)
+      parallels_install_hint windows ninja "rerun the Windows build" >&2
+      ;;
+    *)
+      printf '%s\n' "$output" >&2
+      ;;
+  esac
+  exit 1
+fi

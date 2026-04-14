@@ -11,6 +11,10 @@ LAUNCH=1
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+
+# shellcheck source=scripts/parallels/install-hints.sh
+source "${SCRIPT_DIR}/../install-hints.sh"
+
 LOCAL_CONFIG="${REPO_ROOT}/local/parallels/linux.env"
 if [[ -f "$LOCAL_CONFIG" ]]; then
   # shellcheck disable=SC1090
@@ -127,4 +131,22 @@ if [[ "$LAUNCH" -eq 1 ]]; then
   cmd+=(--launch)
 fi
 
-"${cmd[@]}"
+if output="$("${cmd[@]}" 2>&1)"; then
+  printf '%s\n' "$output"
+else
+  case "$output" in
+    *"Required command not found in Linux PATH: cmake"*|*"cmake was not found in the Linux VM"*)
+      parallels_install_hint linux cmake "rerun the Linux build" >&2
+      ;;
+    *"Required command not found in Linux PATH: git"*|*"git was not found in the Linux VM"*)
+      parallels_install_hint linux git "rerun the Linux build" >&2
+      ;;
+    *"Required command not found in Linux PATH: ninja"*|*"ninja was not found in the Linux VM"*)
+      parallels_install_hint linux ninja "rerun the Linux build" >&2
+      ;;
+    *)
+      printf '%s\n' "$output" >&2
+      ;;
+  esac
+  exit 1
+fi
