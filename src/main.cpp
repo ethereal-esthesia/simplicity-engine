@@ -24,7 +24,7 @@ int main() {
         return 1;
     }
 
-    const SDL_FRect pixel = {320.0f, 180.0f, 1.0f, 1.0f};
+    const SDL_FRect center_mark = {316.0f, 176.0f, 8.0f, 8.0f};
     bool running = true;
 
     while (running) {
@@ -35,11 +35,11 @@ int main() {
             }
         }
 
-        SDL_SetRenderDrawColor(renderer, 12, 16, 24, 255);
+        SDL_SetRenderDrawColor(renderer, 8, 12, 18, 255);
         SDL_RenderClear(renderer);
 
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderFillRect(renderer, &pixel);
+        SDL_SetRenderDrawColor(renderer, 64, 255, 208, 255);
+        SDL_RenderFillRect(renderer, &center_mark);
 
         SDL_RenderPresent(renderer);
     }
