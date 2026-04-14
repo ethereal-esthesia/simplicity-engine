@@ -5,6 +5,9 @@ TARGET="windows"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+# shellcheck source=scripts/parallels/install-hints.sh
+source "${SCRIPT_DIR}/install-hints.sh"
+
 usage() {
   cat <<'EOF'
 Usage: scripts/parallels/setup.sh [options]
@@ -158,7 +161,7 @@ clone_repo_to_guest() {
     else
       case "$clone_output" in
         *git-not-found*)
-          echo "Git was not found in the Windows VM. Please install Git for Windows, then rerun setup." >&2
+          parallels_install_hint windows git "rerun setup" >&2
           ;;
         *path-exists-but-not-repo*)
           echo "Path exists but does not look like this repo: ${guest_repo}" >&2
@@ -170,11 +173,26 @@ clone_repo_to_guest() {
       exit 1
     fi
   else
-    prlctl exec "$vm_name" --current-user bash -lc \
-      'repo="$1"; url="$2"; if ! command -v git >/dev/null 2>&1; then echo "git was not found in the Linux VM. Install git, then rerun setup." >&2; exit 1; fi; if [ -e "$repo" ]; then echo "Path exists but does not look like this repo: $repo" >&2; exit 1; fi; mkdir -p "$(dirname "$repo")"; git clone "$url" "$repo"' \
+    if clone_output="$(prlctl exec "$vm_name" --current-user bash -lc \
+      'repo="$1"; url="$2"; if ! command -v git >/dev/null 2>&1; then echo git-not-found; exit 1; fi; if [ -e "$repo" ]; then echo path-exists-but-not-repo; exit 1; fi; mkdir -p "$(dirname "$repo")"; git clone "$url" "$repo"' \
       bash \
       "$guest_repo" \
-      "$repo_url" </dev/null
+      "$repo_url" </dev/null 2>&1)"; then
+      printf '%s\n' "$clone_output"
+    else
+      case "$clone_output" in
+        *git-not-found*)
+          parallels_install_hint linux git "rerun setup" >&2
+          ;;
+        *path-exists-but-not-repo*)
+          echo "Path exists but does not look like this repo: ${guest_repo}" >&2
+          ;;
+        *)
+          printf '%s\n' "$clone_output" >&2
+          ;;
+      esac
+      exit 1
+    fi
   fi
 }
 

@@ -7,6 +7,10 @@ TARGET="hello_pixel"
 SYNC="none"
 RUN_TESTS=0
 LAUNCH=0
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=scripts/parallels/install-hints.sh
+source "${SCRIPT_DIR}/../install-hints.sh"
 
 usage() {
   cat <<'EOF'
@@ -66,15 +70,12 @@ if [[ "$SYNC" != "none" && "$SYNC" != "pull" ]]; then
   exit 2
 fi
 
-command -v cmake >/dev/null 2>&1 || {
-  echo "Required command not found in Linux PATH: cmake" >&2
-  exit 1
-}
-
-command -v git >/dev/null 2>&1 || {
-  echo "Required command not found in Linux PATH: git" >&2
-  exit 1
-}
+for required_command in cmake git ninja; do
+  command -v "$required_command" >/dev/null 2>&1 || {
+    parallels_install_hint linux "$required_command" "rerun the Linux build" >&2
+    exit 1
+  }
+done
 
 if [[ ! -d "$REPO" ]]; then
   echo "Linux repo path does not exist: $REPO" >&2

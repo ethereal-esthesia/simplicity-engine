@@ -9,17 +9,19 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. "$PSScriptRoot\install-hints.ps1"
 
 function Require-Command {
     param([string]$Name)
 
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "Required command not found in Windows PATH: $Name"
+        throw (Get-ParallelsInstallHint -Platform "windows" -Command $Name -RerunHint "rerun the Windows build")
     }
 }
 
 Require-Command cmake
 Require-Command git
+Require-Command ninja
 
 if (-not (Test-Path -LiteralPath $Repo -PathType Container)) {
     throw "Windows repo path does not exist: $Repo"
