@@ -241,7 +241,7 @@ if [[ "$SYNC" == "host" ]]; then
 fi
 
 cmd=(prlctl exec "$VM_NAME" --current-user powershell.exe \
-  -WindowStyle Hidden \
+  -WindowStyle Minimized \
   -NoProfile \
   -ExecutionPolicy Bypass \
   -File "$guest_script" \

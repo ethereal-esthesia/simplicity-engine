@@ -69,6 +69,24 @@ function Invoke-HostSync {
     Invoke-Checked git status --short --branch
 }
 
+function Start-DetachedProcess {
+    param(
+        [string]$Path,
+        [string]$WorkingDirectory
+    )
+
+    $startup = ([wmiclass]"Win32_ProcessStartup").CreateInstance()
+    $startup.ShowWindow = 1
+    $commandLine = "`"$Path`""
+    $result = ([wmiclass]"Win32_Process").Create($commandLine, $WorkingDirectory, $startup)
+
+    if ($result.ReturnValue -ne 0) {
+        throw "Failed to launch '$Path' with Win32_Process.Create; return code $($result.ReturnValue)"
+    }
+
+    Write-Output "Launched $Path as pid $($result.ProcessId)"
+}
+
 function Get-ClArchitecture {
     param([string]$Path)
 
@@ -445,5 +463,6 @@ if ($Launch) {
         throw "Built executable not found for target '$Target' under build/$Preset"
     }
 
-    Start-Process -FilePath (Resolve-Path -LiteralPath $executable).Path -WorkingDirectory (Split-Path -Parent (Resolve-Path -LiteralPath $executable).Path)
+    $executablePath = (Resolve-Path -LiteralPath $executable).Path
+    Start-DetachedProcess -Path $executablePath -WorkingDirectory (Split-Path -Parent $executablePath)
 }
