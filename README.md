@@ -9,6 +9,7 @@ This repo currently includes a minimal SDL app that opens a window and renders a
 Project reference docs live in `docs/`.
 - Palette mapping reference: `docs/palette-mapping.md`
 - Movable file handle TODO: `docs/movable-file-handle-todo.md`
+- SSH remote runner TODO: `docs/ssh-remote-runner-todo.md`
 
 ## Build Types
 
