@@ -114,6 +114,29 @@ file_contains() {
   grep -Fq -- "$pattern" "$file"
 }
 
+run_prlctl_set_logged() {
+  local description="$1"
+  local required="$2"
+  local output
+
+  shift 2
+
+  if output="$(prlctl set "$VM_NAME" "$@" 2>&1)"; then
+    append_log "${description}:"
+    append_log "$output"
+    append_log ""
+  else
+    append_log "${description} failed:"
+    append_log "$output"
+    append_log ""
+    if [[ "$required" -eq 1 ]]; then
+      echo "${description} failed. See log: ${LOG_PATH}" >&2
+      exit 1
+    fi
+    echo "Warning: ${description} failed. See log: ${LOG_PATH}" >&2
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --vm)
@@ -204,7 +227,11 @@ if [[ -z "$status" ]]; then
   echo "Available VMs:" >&2
   prlctl list --all >&2
   exit 1
-elif [[ "$status" == *"suspended"* ]]; then
+fi
+
+run_prlctl_set_logged "Set VM startup view to headless" 0 --startup-view headless
+
+if [[ "$status" == *"suspended"* ]]; then
   prlctl resume "$VM_NAME"
 elif [[ "$status" != *"running"* ]]; then
   prlctl start "$VM_NAME"
@@ -214,7 +241,7 @@ guest_script="${GUEST_REPO}\\scripts\\parallels\\guest-build-run.ps1"
 HOST_BRANCH=""
 
 if [[ "$NATIVE_MODE" -eq 1 ]]; then
-  prlctl set "$VM_NAME" \
+  run_prlctl_set_logged "Configure guest app sharing" 1 \
     --sh-app-guest-to-host on \
     --sh-app-host-to-guest off \
     --show-guest-app-folder-in-dock off \

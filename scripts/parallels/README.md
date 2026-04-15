@@ -67,6 +67,7 @@ Use `--console` to also print the full Windows build output in the terminal.
 `--host-repo` overrides the Windows-visible path to the Mac checkout if your VM sees the shared folder somewhere else.
 `--launch` runs the built executable through Windows after a successful build.
 `--native` enables guest-to-host app sharing before launch so Windows app windows can integrate more naturally with macOS.
+The Windows runner sets the VM startup view to headless before starting it, which avoids opening the full VM window when the VM is not already running.
 
 ## Sync Notes
 The Windows checkout is a separate working copy. The default sync checks out committed changes from the Mac checkout without pushing.
