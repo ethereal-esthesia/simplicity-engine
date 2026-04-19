@@ -62,6 +62,22 @@ Working idea: keep Parallels, QEMU, UTM, and physical machines responsible for l
 - [ ] Also support `git fetch origin <branch>` for machines that cannot see the Mac checkout.
 - [ ] Avoid copying uncommitted changes by default.
 - [ ] Add an explicit future escape hatch for uncommitted changes, likely `rsync`, but do not make it default.
+- [ ] Never park rejected, replaced, or "bad" files in an unbounded backup directory by default.
+- [ ] If an uncommitted-file sync mode is added, require excludes for build outputs, logs, dependency caches, and generated artifacts.
+- [ ] If an uncommitted-file sync mode is added, estimate transfer size before copying and fail before writing when it exceeds a configured budget.
+- [ ] Prefer atomic temp paths that are cleaned up on failure over accumulating timestamped abandoned copies.
+
+## Disk Safety
+- [ ] Add a remote free-space preflight before sync/build.
+- [ ] Make the required free-space threshold configurable per target.
+- [ ] Fail early with a clear message when the remote repo volume is low on space.
+- [ ] Keep host-side and remote-side logs bounded by count or age.
+- [ ] Avoid remote artifact retention unless explicitly requested.
+- [ ] Put temporary files under a known runner temp directory.
+- [ ] Clean the runner temp directory at the start of each run unless a debug flag asks to preserve it.
+- [ ] Do not delete user-owned files outside runner-managed temp/build/log paths.
+- [ ] Make any destructive cleanup visible in `--console` output and the run log.
+- [ ] Add a `--dry-run-sync` or equivalent before supporting any non-Git file sync.
 
 ## Windows Remote Build
 - [ ] Keep the Windows build logic in PowerShell on the guest, but invoke it over SSH.
