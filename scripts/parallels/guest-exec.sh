@@ -44,3 +44,24 @@ parallels_wait_for_guest_exec() {
   fi
   return 1
 }
+
+parallels_enable_host_home_sharing() {
+  local vm_name="${1:?Missing VM name}"
+  local retry_action="${2:-rerun the command}"
+  local output
+
+  if output="$(prlctl set "$vm_name" \
+    --shf-host on \
+    --shf-host-defined home \
+    --shf-host-automount on 2>&1)"; then
+    return 0
+  fi
+
+  echo "Failed to enable Parallels host Home sharing for VM: $vm_name" >&2
+  echo "Enable host Home sharing in the VM configuration, then ${retry_action}." >&2
+  if [[ -n "$output" ]]; then
+    echo "Parallels error:" >&2
+    printf '%s\n' "$output" >&2
+  fi
+  return 1
+}

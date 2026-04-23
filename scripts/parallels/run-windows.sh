@@ -232,6 +232,12 @@ if [[ -z "$status" ]]; then
 fi
 
 run_prlctl_set_logged "Set VM startup view to headless" 0 --startup-view headless
+if [[ "$SYNC" == "host" ]]; then
+  run_prlctl_set_logged "Configure host Home sharing" 1 \
+    --shf-host on \
+    --shf-host-defined home \
+    --shf-host-automount on
+fi
 
 if [[ "$status" == *"suspended"* ]]; then
   prlctl resume "$VM_NAME"

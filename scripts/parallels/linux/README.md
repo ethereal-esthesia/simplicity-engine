@@ -32,6 +32,8 @@ writing `local/parallels/linux.env`.
 It uses the current Linux user's home directory plus the host repo path relative
 to the host home directory. For example, `/Users/shane/Project/simplicity-engine`
 defaults to `$HOME/Project/simplicity-engine` in Linux.
+It also enables Parallels host Home sharing so the VM can fetch committed local
+changes from the Mac checkout.
 It also writes the Linux-visible Parallels shared-folder path for the Mac repo,
 defaulting to `/media/psf/Home/<host repo path relative to $HOME>`.
 

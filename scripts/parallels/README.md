@@ -34,6 +34,8 @@ writing `local/parallels/windows.env`.
 It uses the current Windows user's profile directory plus the host repo path
 relative to the host home directory. For example, `/Users/shane/Project/simplicity-engine`
 defaults to `%USERPROFILE%\Project\simplicity-engine` in Windows.
+It also enables Parallels host Home sharing so the VM can fetch committed local
+changes from the Mac checkout.
 It also writes the Windows-visible Parallels shared-folder path for the Mac repo,
 defaulting to `\\Mac\Home\<host repo path relative to $HOME>`.
 

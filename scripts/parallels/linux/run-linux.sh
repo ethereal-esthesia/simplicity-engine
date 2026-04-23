@@ -136,6 +136,10 @@ if [[ -z "$status" ]]; then
   exit 1
 fi
 
+if [[ "$SYNC" == "host" ]]; then
+  parallels_enable_host_home_sharing "$VM_NAME" "rerun the Linux build"
+fi
+
 if [[ "$status" == *"suspended"* ]]; then
   prlctl resume "$VM_NAME"
 elif [[ "$status" != *"running"* ]]; then

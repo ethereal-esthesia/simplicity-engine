@@ -286,6 +286,7 @@ if [[ -z "$vm_name" ]]; then
 fi
 
 ensure_vm_running "$vm_name"
+parallels_enable_host_home_sharing "$vm_name" "rerun setup"
 wait_for_guest_exec "$vm_name"
 
 if [[ "$TARGET" == "windows" ]]; then
