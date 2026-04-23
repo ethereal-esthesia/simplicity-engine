@@ -15,6 +15,8 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
 # shellcheck source=scripts/parallels/install-hints.sh
 source "${SCRIPT_DIR}/../install-hints.sh"
+# shellcheck source=scripts/parallels/guest-exec.sh
+source "${SCRIPT_DIR}/../guest-exec.sh"
 
 LOCAL_CONFIG="${REPO_ROOT}/local/parallels/linux.env"
 if [[ -f "$LOCAL_CONFIG" ]]; then
@@ -139,6 +141,8 @@ if [[ "$status" == *"suspended"* ]]; then
 elif [[ "$status" != *"running"* ]]; then
   prlctl start "$VM_NAME"
 fi
+
+parallels_wait_for_guest_exec linux "$VM_NAME" "rerun the Linux build"
 
 echo "Running Linux build in VM '${VM_NAME}' at '${GUEST_REPO}'"
 echo "Mac repo: ${REPO_ROOT}"

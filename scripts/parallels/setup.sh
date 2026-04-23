@@ -7,6 +7,8 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # shellcheck source=scripts/parallels/install-hints.sh
 source "${SCRIPT_DIR}/install-hints.sh"
+# shellcheck source=scripts/parallels/guest-exec.sh
+source "${SCRIPT_DIR}/guest-exec.sh"
 
 usage() {
   cat <<'EOF'
@@ -119,27 +121,8 @@ ensure_vm_running() {
 
 wait_for_guest_exec() {
   local vm_name="$1"
-  local attempt
 
-  echo "Waiting for ${TARGET} guest commands to become available..."
-  for attempt in {1..30}; do
-    if [[ "$TARGET" == "windows" ]]; then
-      if prlctl exec "$vm_name" --current-user powershell.exe \
-        -NoProfile \
-        -ExecutionPolicy Bypass \
-        -Command 'exit 0' >/dev/null 2>&1 </dev/null; then
-        return
-      fi
-    elif prlctl exec "$vm_name" --current-user true >/dev/null 2>&1 </dev/null; then
-      return
-    fi
-
-    sleep 2
-  done
-
-  echo "Timed out waiting for guest commands in VM: $vm_name" >&2
-  echo "Log in to the VM desktop and make sure Parallels Tools are running, then rerun setup." >&2
-  exit 1
+  parallels_wait_for_guest_exec "$TARGET" "$vm_name" "rerun setup"
 }
 
 guest_repo_exists() {
