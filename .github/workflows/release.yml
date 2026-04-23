@@ -57,7 +57,7 @@ jobs:
         run: ./tools/package_linux.sh
 
       - name: Upload Linux artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-linux-${{ matrix.arch }}
           path: |
@@ -86,7 +86,7 @@ jobs:
         run: ./tools/package_windows_zip.ps1 -ArchLabel "${{ matrix.arch }}"
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-windows-${{ matrix.arch }}
           path: dist/simplicity-engine-windows-${{ matrix.arch }}.zip
@@ -117,7 +117,7 @@ jobs:
         run: ./tools/package_macos.sh
 
       - name: Upload macOS artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-macos-${{ matrix.arch }}
           path: dist/simplicity-engine-macos-${{ matrix.arch }}.tar.gz
