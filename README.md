@@ -10,6 +10,10 @@ Project reference docs live in `docs/`.
 - Palette mapping reference: `docs/palette-mapping.md`
 - Movable file handle TODO: `docs/movable-file-handle-todo.md`
 - SSH remote runner TODO: `docs/ssh-remote-runner-todo.md`
+- Mobile testing notes: `docs/mobile-testing/README.md`
+
+Top-level setup guides:
+- Mobile testing setup: `MOBILE-TESTING-SETUP.md`
 
 ## Build Types
 
