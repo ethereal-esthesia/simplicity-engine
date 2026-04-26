@@ -61,6 +61,32 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_TOOLCHAIN_FILE": "cmake/toolchains/mingw-w64-x86_64.cmake"
       }
+    },
+    {
+      "name": "ios-ipad-simulator-debug",
+      "displayName": "iOS iPad Simulator Debug",
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build/ios-ipad-simulator-debug",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "iOS",
+        "CMAKE_OSX_SYSROOT": "iphonesimulator",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "17.0",
+        "SIMPLICITY_ENGINE_IOS_DEVICE_FAMILY": "2"
+      }
+    },
+    {
+      "name": "ios-ipad-simulator-release",
+      "displayName": "iOS iPad Simulator Release",
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build/ios-ipad-simulator-release",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "iOS",
+        "CMAKE_OSX_SYSROOT": "iphonesimulator",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "17.0",
+        "SIMPLICITY_ENGINE_IOS_DEVICE_FAMILY": "2"
+      }
     }
   ],
   "buildPresets": [
@@ -87,6 +113,20 @@
     {
       "name": "windows-release",
       "configurePreset": "windows-release"
+    },
+    {
+      "name": "ios-ipad-simulator-debug",
+      "configurePreset": "ios-ipad-simulator-debug",
+      "targets": [
+        "hello_pixel"
+      ]
+    },
+    {
+      "name": "ios-ipad-simulator-release",
+      "configurePreset": "ios-ipad-simulator-release",
+      "targets": [
+        "hello_pixel"
+      ]
     }
   ]
 }

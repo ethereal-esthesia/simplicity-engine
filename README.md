@@ -9,6 +9,7 @@ This repo currently includes a minimal SDL app that opens a window and renders a
 Project reference docs live in `docs/`.
 - Palette mapping reference: `docs/palette-mapping.md`
 - Movable file handle TODO: `docs/movable-file-handle-todo.md`
+- Platform targets TODO: `docs/platform-targets-todo.md`
 - SSH remote runner TODO: `docs/ssh-remote-runner-todo.md`
 - Mobile testing notes: `docs/mobile-testing/README.md`
 
@@ -79,6 +80,14 @@ Useful variants:
 ```
 
 By default, build and app output is written to `logs/`. Use `--console` when you want the full output attached to the current shell.
+
+### iPad Simulator
+
+To build the sample app as an iPad-form iOS app and launch it in Simulator:
+
+```bash
+./tools/run_ios_simulator.sh
+```
 
 Manual debug equivalent:
 

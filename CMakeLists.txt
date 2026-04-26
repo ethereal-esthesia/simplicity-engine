@@ -14,6 +14,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(
+  SIMPLICITY_ENGINE_IOS_BUNDLE_IDENTIFIER
+  "dev.simplicityengine.hello-pixel"
+  CACHE STRING
+  "Bundle identifier used for iOS simulator/device app builds")
+set(
+  SIMPLICITY_ENGINE_IOS_DEVICE_FAMILY
+  "1,2"
+  CACHE STRING
+  "Apple device families for iOS builds (1=iPhone, 2=iPad)")
+
 include(FetchContent)
 
 set(SDL_TEST OFF CACHE BOOL "Disable SDL tests" FORCE)
@@ -33,6 +44,17 @@ add_executable(smoke_fast_rng tests/smoke_fast_rng.cpp)
 add_executable(test_fast_rng_vectors tests/test_fast_rng_vectors.cpp)
 
 target_link_libraries(hello_pixel PRIVATE SDL3::SDL3)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  set_target_properties(
+    hello_pixel PROPERTIES
+      MACOSX_BUNDLE TRUE
+      XCODE_ATTRIBUTE_GENERATE_INFOPLIST_FILE "YES"
+      XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${SIMPLICITY_ENGINE_IOS_BUNDLE_IDENTIFIER}"
+      XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "${SIMPLICITY_ENGINE_IOS_DEVICE_FAMILY}"
+      XCODE_ATTRIBUTE_INFOPLIST_KEY_CFBundleDisplayName "Hello Pixel"
+      XCODE_ATTRIBUTE_INFOPLIST_KEY_UISupportedInterfaceOrientations "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+      XCODE_ATTRIBUTE_INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight")
+endif()
 if(WIN32)
   set_target_properties(hello_pixel PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()

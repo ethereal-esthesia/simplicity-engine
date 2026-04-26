@@ -5,6 +5,7 @@ Utility scripts for local development, packaging, and release.
 ## Build
 
 - `build-in-container.sh`: Build Linux and Windows targets inside the Docker build image.
+- `run_ios_simulator.sh`: Configure, build, and launch the iOS app on an iPad simulator by default.
 - `smoke.sh`: Run all CTest smoke tests (`LABELS smoke`) for a build flavor (`release` by default).
 - `test.sh`: Run the full CTest suite for a build flavor (`release` by default).
 
