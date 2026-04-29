@@ -26,14 +26,14 @@ This is enough to justify a practical target list instead of treating every hard
 The engine should eventually make these flows normal:
 
 ```bash
-./tools/build-target.sh macos
-./tools/build-target.sh windows-x64
-./tools/build-target.sh windows-arm64
-./tools/build-target.sh linux-x64
-./tools/build-target.sh ios
-./tools/build-target.sh android
-./tools/build-target.sh fireos
-./tools/build-target.sh chromeos
+./scripts/build-target.sh macos
+./scripts/build-target.sh windows-x64
+./scripts/build-target.sh windows-arm64
+./scripts/build-target.sh linux-x64
+./scripts/build-target.sh ios
+./scripts/build-target.sh android
+./scripts/build-target.sh fireos
+./scripts/build-target.sh chromeos
 ```
 
 The exact target names can change, but the user experience goal should not.
@@ -101,16 +101,39 @@ These are the phone families we should be able to point to when we say the engin
 - [ ] `android-phone`
   - Mainstream Android phone validation target.
 
+### Conditional Or Legacy
+
+- [ ] `windows-phone-legacy`
+  - Legacy Microsoft phone support lane for older Windows Phone / Windows 10 Mobile devices if we decide preserving that workflow is worth the extra tooling.
+- [ ] `windows-phone-next`
+  - Placeholder lane for any future Microsoft phone platform. Keep it documented, but treat it as dormant unless Microsoft ships a real modern phone target again.
+
 ## One-Liner Build UX
 
 - [ ] Add a single entrypoint for target builds:
-  - [ ] `./tools/build-target.sh <target>`
+  - [ ] `./scripts/build-target.sh <target>`
 - [ ] Add a single entrypoint for running local validation where that makes sense:
-  - [ ] `./tools/run-target.sh <target>`
+  - [ ] `./scripts/run-target.sh <target>`
 - [ ] Add a single entrypoint for packaging/export:
-  - [ ] `./tools/package-target.sh <target>`
+  - [ ] `./scripts/package-target.sh <target>`
 - [ ] Make target names stable and documented.
 - [ ] Make unsupported host/target combinations fail with a short, direct explanation.
+
+## Platform Bootstrap TODO
+
+- [ ] Keep desktop VM bootstrap separate from mobile simulator bootstrap.
+- [ ] `scripts/setup_utm.sh`
+  - [ ] Cover the desktop VM lanes: Windows, Linux, and macOS guest setup.
+- [ ] `scripts/setup_android_emulators.sh`
+  - [ ] Install or verify Android SDK prerequisites.
+  - [ ] Create one Android phone AVD.
+  - [ ] Create one Android tablet AVD.
+- [ ] `scripts/setup_ios_simulators.sh`
+  - [ ] Verify Xcode command-line tools and required simulator runtimes.
+  - [ ] Prepare one iPhone simulator lane.
+  - [ ] Prepare one iPad simulator lane.
+- [ ] Do not treat Windows as a phone/tablet simulator lane in the same sense as Android and Apple.
+- [ ] When a platform lane is declared finished, run its installer end to end on that platform family.
 
 ## Platform Shell Polish
 
@@ -141,6 +164,8 @@ These are the phone families we should be able to point to when we say the engin
 - [ ] `windows-tablet` should stay a validation profile on top of `windows-x64` and `windows-arm64`, not become its own build target.
 - [ ] Surface should be the first Windows-tablet hardware lane we validate, but not the only hardware assumption baked into the docs.
 - [ ] Open VM tooling should be the default Windows-tablet smoke path; Parallels should stay optional and never become the only documented route.
+- [ ] `windows-phone-legacy` should stay clearly marked as archival support unless we adopt and maintain a concrete legacy toolchain.
+- [ ] `windows-phone-next` should stay dormant unless Microsoft ships a modern phone platform again.
 - [ ] `fireos` should not become a forked engine target unless real API divergence forces it.
 - [ ] `chromeos` should not become a forked engine target unless Android-on-ChromeOS constraints force it.
 
@@ -180,12 +205,19 @@ Before claiming the engine has cross-platform target support for a target family
 - [ ] `linux-arm64`
 - [ ] broader Android tablet validation on Lenovo/Xiaomi hardware
 
+### Phase 5
+
+- [ ] `windows-phone-legacy`, only if we intentionally choose to preserve older Microsoft phone support
+- [ ] `windows-phone-next`, only if Microsoft ships a real modern phone platform again
+
 ## Open Questions
 
 - [ ] Should `ipados` be a visible target name in tooling, or should it stay a validation profile under `ios`?
 - [ ] Should `fireos` and `chromeos` have their own package commands, even if they share the Android binary?
 - [ ] Do we want host-side remote runners for Apple, Android, and Windows targets before we add more target names?
 - [ ] At what point do we add Web as a first-class target, even though it is not an operating system target?
+- [ ] Do we actually want to preserve a legacy Microsoft phone lane, or is documenting it enough?
+- [ ] If Microsoft ever ships another phone platform, do we treat it as a fresh compile target, a Windows-derived compatibility target, or its own validation lane first?
 
 ## Sources
 

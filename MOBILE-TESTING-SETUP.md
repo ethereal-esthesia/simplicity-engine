@@ -190,7 +190,7 @@ Recommended working options:
 Practical implication for this repo:
 
 - there is no built-in `fire-tablet` launcher target right now
-- if you create a custom Fire-style AVD, launch it through the generic Android path with `./tools/run_android_emulator.sh --avd <name>`
+- if you create a custom Fire-style AVD, launch it through the generic Android path with `./scripts/run_android_emulator.sh --avd <name>`
 - for store-entry testing, plan on a physical Fire tablet signed in to the Amazon Appstore plus Live App Testing
 
 For 2D apps, enable hardware acceleration in the manifest:

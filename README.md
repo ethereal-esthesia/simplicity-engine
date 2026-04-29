@@ -20,6 +20,70 @@ VM direction:
 - Prefer open VM tooling such as QEMU/libvirt or UTM for cross-platform automation.
 - Keep Parallels as an optional paid alternative, not the default plan.
 
+Script surface:
+
+```bash
+./scripts/setup_target.sh <target>
+./scripts/build_target.sh <target>
+./scripts/run_target.sh <target>
+./scripts/package_target.sh <target>
+```
+
+Those are the stable top-level entrypoints we want people to grow into. Underneath them, target-specific wrappers such as `scripts/run_ios_ipad.sh` and `scripts/setup_utm.sh` still exist and stay usable while the unified backends fill in.
+
+UTM bootstrap:
+
+```bash
+./scripts/setup_utm.sh
+```
+
+That no-flag path is the safe starting point. It:
+
+- installs or upgrades UTM on macOS through Homebrew
+- prepares the ignored guest-media cache under `local/utm/media`
+- stops before starting any guest OS media flow
+- prints the next-step commands for each platform pipeline
+
+Platform pipelines:
+
+```bash
+./scripts/setup_utm.sh --windows
+./scripts/setup_utm.sh --linux
+./scripts/setup_utm.sh --macos
+./scripts/setup_utm.sh --all
+```
+
+What each one does:
+
+- `--windows`
+  - prepares `local/utm/media/windows`
+  - opens Microsoft's official Windows 11 Arm64 download page by default
+  - writes a reminder file in that folder because Microsoft's download flow is interactive
+- `--linux`
+  - downloads the official Ubuntu ARM64 desktop ISO into `local/utm/media/linux`
+- `--macos`
+  - tries to fetch the latest supported macOS restore image from Apple's virtualization service
+  - if that fetch fails, it leaves a reminder file and points you at UTM's built-in macOS guest flow
+- `--all`
+  - runs the Windows, Linux, and macOS guest-media setup paths in sequence
+
+If you already have local guest media, pass it explicitly:
+
+```bash
+./scripts/setup_utm.sh --windows --iso /path/to/windows.iso
+./scripts/setup_utm.sh --linux --iso /path/to/linux.iso
+./scripts/setup_utm.sh --macos --iso /path/to/restore.ipsw
+```
+
+Useful options:
+
+- `--download-dir <dir>` stores media somewhere other than `local/utm/media`
+- `--force` re-downloads or replaces staged media
+- `--skip-install-utm` skips the Homebrew UTM install/upgrade step
+- `--no-open` avoids opening browser pages for the interactive Windows or fallback macOS paths
+
+The script is idempotent within a run: shared host setup only happens once, and later pipeline steps will report when that setup was already handled.
+
 ## Build Types
 
 To match Serenity's workflow, this project uses two primary build types:
@@ -71,16 +135,16 @@ winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--pass
 Demo run (default debug `hello_pixel` build):
 
 ```bash
-./tools/run.sh
+./scripts/run.sh
 ```
 
 Useful variants:
 
 ```bash
-./tools/run.sh --no-launch
-./tools/run.sh --test
-./tools/run.sh --preset release
-./tools/run.sh --console
+./scripts/run.sh --no-launch
+./scripts/run.sh --test
+./scripts/run.sh --preset release
+./scripts/run.sh --console
 ```
 
 By default, build and app output is written to `logs/`. Use `--console` when you want the full output attached to the current shell.
@@ -90,13 +154,13 @@ By default, build and app output is written to `logs/`. Use `--console` when you
 To build the sample app as an iPad-form iOS app and launch it in Simulator:
 
 ```bash
-./tools/run_ios_ipad.sh
+./scripts/run_ios_ipad.sh
 ```
 
 For iPhone Simulator instead:
 
 ```bash
-./tools/run_ios_iphone.sh
+./scripts/run_ios_iphone.sh
 ```
 
 ### Android Emulators
@@ -104,16 +168,16 @@ For iPhone Simulator instead:
 To build, install, and launch the sample app on a running Android emulator, or automatically start the first matching AVD it finds:
 
 ```bash
-./tools/run_android_phone.sh
-./tools/run_android_tablet.sh
+./scripts/run_android_phone.sh
+./scripts/run_android_tablet.sh
 ```
 
 Useful variants:
 
 ```bash
-./tools/run_android_phone.sh --build-only
-./tools/run_android_tablet.sh --build-only
-./tools/run_android_emulator.sh --avd Half_Screen_Tablet_API_36.1
+./scripts/run_android_phone.sh --build-only
+./scripts/run_android_tablet.sh --build-only
+./scripts/run_android_emulator.sh --avd Half_Screen_Tablet_API_36.1
 ```
 
 For Fire-tablet compatibility smoke tests, create a custom AVD that matches a Fire tablet and launch it with `--avd <name>`. For Amazon Appstore retail-page and final Fire OS checks, use a physical Fire tablet and Amazon Live App Testing.
@@ -170,7 +234,7 @@ docker build -t simplicity-engine-build .
 Run Linux + Windows builds inside the container:
 
 ```bash
-docker run --rm -it -v "$PWD:/workspace" simplicity-engine-build ./tools/build-in-container.sh
+docker run --rm -it -v "$PWD:/workspace" simplicity-engine-build ./scripts/build-in-container.sh
 ```
 
 Expected artifacts:
@@ -194,6 +258,6 @@ Release automation matches the tag-driven pattern used in Serenity Engine:
 Use the local release helper script:
 
 ```bash
-./tools/release.sh          # show latest release tag
-./tools/release.sh v0.1.0   # create + push a new release tag
+./scripts/release.sh          # show latest release tag
+./scripts/release.sh v0.1.0   # create + push a new release tag
 ```

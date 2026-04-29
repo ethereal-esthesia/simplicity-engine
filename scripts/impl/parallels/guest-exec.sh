@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+
+parallels_wait_for_guest_exec() {
+  local target="${1-}"
+  local vm_name="${2-}"
+  local retry_action="${3:-rerun the command}"
+  local attempts="${4:-${PARALLELS_GUEST_EXEC_ATTEMPTS:-30}}"
+  local delay_seconds="${5:-${PARALLELS_GUEST_EXEC_DELAY_SECONDS:-2}}"
+  local attempt
+  local last_output=""
+
+  if [[ -z "$target" ]]; then
+    echo "Internal error: parallels_wait_for_guest_exec was called without a guest target." >&2
+    return 2
+  fi
+  if [[ -z "$vm_name" ]]; then
+    echo "Internal error: parallels_wait_for_guest_exec was called without a VM name." >&2
+    return 2
+  fi
+
+  echo "Waiting for ${target} guest commands to become available..."
+  for ((attempt = 1; attempt <= attempts; attempt += 1)); do
+    case "$target" in
+      windows)
+        if last_output="$(prlctl exec "$vm_name" --current-user powershell.exe \
+          -NoProfile \
+          -ExecutionPolicy Bypass \
+          -Command 'exit 0' </dev/null 2>&1)"; then
+          return 0
+        fi
+        ;;
+      linux)
+        if last_output="$(prlctl exec "$vm_name" --current-user true </dev/null 2>&1)"; then
+          return 0
+        fi
+        ;;
+      *)
+        echo "Unknown Parallels guest target: $target" >&2
+        return 2
+        ;;
+    esac
+
+    if [[ "$attempt" -lt "$attempts" ]]; then
+      sleep "$delay_seconds"
+    fi
+  done
+
+  echo "Timed out waiting for guest commands in VM: $vm_name" >&2
+  echo "Log in to the VM desktop and make sure Parallels Tools are running, then ${retry_action}." >&2
+  if [[ -n "$last_output" ]]; then
+    echo "Last Parallels error:" >&2
+    printf '%s\n' "$last_output" >&2
+  fi
+  return 1
+}
+
+parallels_enable_host_home_sharing() {
+  local vm_name="${1-}"
+  local retry_action="${2:-rerun the command}"
+  local output
+
+  if [[ -z "$vm_name" ]]; then
+    echo "Internal error: parallels_enable_host_home_sharing was called without a VM name." >&2
+    return 2
+  fi
+
+  if output="$(prlctl set "$vm_name" \
+    --shf-host on \
+    --shf-host-defined home \
+    --shf-host-automount on 2>&1)"; then
+    return 0
+  fi
+
+  echo "Failed to enable Parallels host Home sharing for VM: $vm_name" >&2
+  echo "Enable host Home sharing in the VM configuration, then ${retry_action}." >&2
+  if [[ -n "$output" ]]; then
+    echo "Parallels error:" >&2
+    printf '%s\n' "$output" >&2
+  fi
+  return 1
+}
