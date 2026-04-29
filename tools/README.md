@@ -6,7 +6,8 @@ Utility scripts for local development, packaging, and release.
 
 - `build-in-container.sh`: Build Linux and Windows targets inside the Docker build image.
 - `run.sh`: Configure, build, optionally test, and launch the sample desktop app on the current host.
-- `run_android_emulator.sh`: Build and install the Android sample app on a running or auto-started emulator.
+- `run_android_emulator.sh`: Build and install the Android sample app on a running or auto-started emulator, with target profiles such as `android-phone` and `android-tablet`. You can also point it at a custom AVD with `--avd <name>`.
+- `run_android_phone.sh`: Stable Android phone emulator entrypoint.
 - `run_android_tablet.sh`: Stable Android tablet emulator entrypoint.
 - `run_ios_ipad.sh`: Stable iPad Simulator entrypoint.
 - `run_ios_iphone.sh`: Stable iPhone Simulator entrypoint.
@@ -16,7 +17,7 @@ Utility scripts for local development, packaging, and release.
 
 ## Remote And VM Helpers
 
-- `parallels/`: Run and set up Linux and Windows guest builds through Parallels.
+- `parallels/`: Optional paid helpers for Linux and Windows guest builds through Parallels. The long-term default direction is backend-neutral remote tooling with open VM stacks such as QEMU/libvirt or UTM.
 
 ## Packaging
 

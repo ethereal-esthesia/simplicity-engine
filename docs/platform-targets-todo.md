@@ -77,9 +77,9 @@ These are the tablet families we should be able to point to when we say the engi
 - [ ] `galaxy-tab`
   - Mainstream Android tablet validation target.
 - [ ] `fire-tablet`
-  - Fire OS validation target.
-- [ ] `surface`
-  - Windows tablet validation target.
+  - Fire OS validation target. Use a custom Fire-style AVD for smoke tests, then a physical Fire tablet plus Live App Testing for Appstore-facing checks.
+- [ ] `windows-tablet`
+  - Windows tablet validation target. Surface is the first obvious hardware lane here, but the engine target should stay Windows-first instead of becoming Surface-specific. Use open VM tooling such as QEMU/libvirt or UTM for build and smoke checks; keep Parallels as an optional paid alternative, and require real hardware for touch signoff.
 - [ ] `chromebook-tablet-or-2-in-1`
   - ChromeOS validation target.
 
@@ -89,6 +89,17 @@ These are the tablet families we should be able to point to when we say the engi
   - Good extra signal for broader global Android tablet coverage.
 - [ ] `xiaomi-android-tablet`
   - Useful if the engine starts caring more about broader non-US Android tablet behavior.
+
+## Phone Validation Targets
+
+These are the phone families we should be able to point to when we say the engine supports popular phone workflows.
+
+### Required
+
+- [ ] `iphone`
+  - iPhone validation target for Apple phones.
+- [ ] `android-phone`
+  - Mainstream Android phone validation target.
 
 ## One-Liner Build UX
 
@@ -110,11 +121,26 @@ These are the tablet families we should be able to point to when we say the engi
 - [ ] Apple:
   - [ ] Make sure iPhone/iPad app icons and launch presentation match engine branding once we move past the placeholder sample phase.
 
+## Input And Gesture Normalization
+
+- [ ] Normalize pointer input across mouse, trackpad, and touchscreen so simple apps do not need per-platform gesture branches.
+- [ ] Normalize single-pointer tap / click semantics across desktop and mobile targets.
+- [ ] Normalize drag / pan semantics across mouse drag, trackpad gesture, and touchscreen drag.
+- [ ] Normalize scroll semantics across mouse wheel, two-finger trackpad scroll, and touch-driven content movement.
+- [ ] Normalize pinch / zoom gestures across trackpad pinch and touchscreen pinch where the platform supports both.
+- [ ] Normalize swipe gestures across trackpad and touchscreen input where the platform exposes both.
+- [ ] Decide which gestures belong in the engine core versus a higher-level UI layer.
+- [ ] Log which native gesture or pointer backend produced each normalized input event when debug input logging is enabled.
+- [ ] Document the minimum normalized gesture set that every supported target must expose.
+- [ ] Treat pen input as a later extension unless a target forces earlier support for pressure, tilt, or hover semantics.
+
 ## Target Rules
 
 - [ ] `ios` and `ipados` should share as much engine code as possible.
 - [ ] `android`, `fireos`, and `chromeos` should share as much engine code as possible.
-- [ ] `surface` should map to Windows targets, not become its own build target.
+- [ ] `windows-tablet` should stay a validation profile on top of `windows-x64` and `windows-arm64`, not become its own build target.
+- [ ] Surface should be the first Windows-tablet hardware lane we validate, but not the only hardware assumption baked into the docs.
+- [ ] Open VM tooling should be the default Windows-tablet smoke path; Parallels should stay optional and never become the only documented route.
 - [ ] `fireos` should not become a forked engine target unless real API divergence forces it.
 - [ ] `chromeos` should not become a forked engine target unless Android-on-ChromeOS constraints force it.
 
@@ -146,7 +172,7 @@ Before claiming the engine has cross-platform target support for a target family
 - [ ] `ipados`
 - [ ] `fireos`
 - [ ] `chromeos`
-- [ ] `surface`
+- [ ] `windows-tablet`
 
 ### Phase 4
 
@@ -170,3 +196,4 @@ Before claiming the engine has cross-platform target support for a target family
 - Worldwide tablet market, 2025: <https://www.idc.com/resource-center/blog/global-tablet-shipments-rise-1-9-in-4q25-as-seasonal-demand-offsets-cooling-replacement-cycle/>
 - Desktop OS market share reference: <https://gs.statcounter.com/os-market-share/desktop/worldwide/2025>
 - Mobile OS market share reference: <https://gs.statcounter.com/os-market-share/mobile/worldwide-/2025>
+- Windows touch guidance: <https://learn.microsoft.com/en-us/windows/apps/develop/input/touch-interactions>

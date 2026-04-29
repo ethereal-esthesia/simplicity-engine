@@ -31,6 +31,26 @@ Options:
 EOF
 }
 
+usage_error() {
+  local message="$1"
+
+  echo "$message" >&2
+  echo >&2
+  usage >&2
+  exit 2
+}
+
+require_option_value() {
+  local option="$1"
+  local value="${2-}"
+
+  if [[ -z "$value" || "$value" == --* ]]; then
+    usage_error "Missing value for ${option}."
+  fi
+
+  printf '%s\n' "$value"
+}
+
 host_platform() {
   case "$(uname -s)" in
     Darwin)
@@ -187,11 +207,11 @@ launch_executable() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --preset)
-      PRESET="${2:?Missing value for --preset}"
+      PRESET="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --target)
-      TARGET="${2:?Missing value for --target}"
+      TARGET="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --test)
@@ -220,9 +240,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo "Unknown option: $1" >&2
-      usage >&2
-      exit 2
+      usage_error "Unknown option: $1"
       ;;
   esac
 done
@@ -263,7 +281,8 @@ echo "Build succeeded."
 
 if [[ "$LAUNCH" -eq 1 ]]; then
   executable="$(find_executable "$PRESET" "$TARGET")" || {
-    echo "Built executable not found for target '$TARGET' under build/$PRESET" >&2
+    echo "Built target '${TARGET}' was not found under build/${PRESET}." >&2
+    echo "If this preset builds app bundles or generator-specific folders, check the full log at ${LOG_PATH}." >&2
     exit 1
   }
 

@@ -27,22 +27,42 @@ Options:
 EOF
 }
 
+usage_error() {
+  local message="$1"
+
+  echo "$message" >&2
+  echo >&2
+  usage >&2
+  exit 2
+}
+
+require_option_value() {
+  local option="$1"
+  local value="${2-}"
+
+  if [[ -z "$value" || "$value" == --* ]]; then
+    usage_error "Missing value for ${option}."
+  fi
+
+  printf '%s\n' "$value"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repo)
-      REPO="${2:?Missing value for --repo}"
+      REPO="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --preset)
-      PRESET="${2:?Missing value for --preset}"
+      PRESET="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --target)
-      TARGET="${2:?Missing value for --target}"
+      TARGET="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --sync)
-      SYNC="${2:?Missing value for --sync}"
+      SYNC="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --test)
@@ -58,16 +78,13 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo "Unknown option: $1" >&2
-      usage >&2
-      exit 2
+      usage_error "Unknown option: $1"
       ;;
   esac
 done
 
 if [[ "$SYNC" != "none" && "$SYNC" != "pull" ]]; then
-  echo "--sync must be 'none' or 'pull'." >&2
-  exit 2
+  usage_error "--sync must be 'none' or 'pull'."
 fi
 
 for required_command in cmake git ninja; do
@@ -78,7 +95,8 @@ for required_command in cmake git ninja; do
 done
 
 if [[ ! -d "$REPO" ]]; then
-  echo "Linux repo path does not exist: $REPO" >&2
+  echo "Linux repo path does not exist: ${REPO}" >&2
+  echo "Make sure the repo is present in the VM, or rerun the Parallels setup helper first." >&2
   exit 1
 fi
 
@@ -109,7 +127,8 @@ if [[ "$LAUNCH" -eq 1 ]]; then
   done
 
   if [[ -z "$executable" ]]; then
-    echo "Built executable not found for target '$TARGET' under build/$PRESET" >&2
+    echo "Built target '${TARGET}' was not found under build/${PRESET}." >&2
+    echo "Check the build output above and confirm the selected preset produces a runnable executable." >&2
     exit 1
   fi
 

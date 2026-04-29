@@ -16,6 +16,10 @@ Project reference docs live in `docs/`.
 Top-level setup guides:
 - Mobile testing setup: `MOBILE-TESTING-SETUP.md`
 
+VM direction:
+- Prefer open VM tooling such as QEMU/libvirt or UTM for cross-platform automation.
+- Keep Parallels as an optional paid alternative, not the default plan.
+
 ## Build Types
 
 To match Serenity's workflow, this project uses two primary build types:
@@ -95,20 +99,24 @@ For iPhone Simulator instead:
 ./tools/run_ios_iphone.sh
 ```
 
-### Android Tablet Emulator
+### Android Emulators
 
-To build, install, and launch the sample app on a running Android emulator, or automatically start the first tablet-flavored AVD it finds:
+To build, install, and launch the sample app on a running Android emulator, or automatically start the first matching AVD it finds:
 
 ```bash
+./tools/run_android_phone.sh
 ./tools/run_android_tablet.sh
 ```
 
 Useful variants:
 
 ```bash
+./tools/run_android_phone.sh --build-only
 ./tools/run_android_tablet.sh --build-only
 ./tools/run_android_emulator.sh --avd Half_Screen_Tablet_API_36.1
 ```
+
+For Fire-tablet compatibility smoke tests, create a custom AVD that matches a Fire tablet and launch it with `--avd <name>`. For Amazon Appstore retail-page and final Fire OS checks, use a physical Fire tablet and Amazon Live App Testing.
 
 Requirements for the Android path:
 - Android SDK with platform-tools, emulator, and at least one system image

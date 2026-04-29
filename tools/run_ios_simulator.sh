@@ -8,6 +8,11 @@ DEVICE_NAME=""
 BUILD_ONLY=0
 DEVICE_CLASS="ipad"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=tools/install-hints.sh
+source "${SCRIPT_DIR}/install-hints.sh"
+
 usage() {
   cat <<'EOF'
 Usage: tools/run_ios_simulator.sh [options]
@@ -20,6 +25,35 @@ Options:
   --build-only       Configure and build, but do not boot/install/launch
   -h, --help         Show this help
 EOF
+}
+
+usage_error() {
+  local message="$1"
+
+  echo "$message" >&2
+  echo >&2
+  usage >&2
+  exit 2
+}
+
+require_option_value() {
+  local option="$1"
+  local value="${2-}"
+
+  if [[ -z "$value" || "$value" == --* ]]; then
+    usage_error "Missing value for ${option}."
+  fi
+
+  printf '%s\n' "$value"
+}
+
+require_command() {
+  local command_name="$1"
+
+  command -v "$command_name" >/dev/null 2>&1 || {
+    simplicity_install_hint macos "$command_name" "rerun the iOS simulator launcher" >&2
+    exit 1
+  }
 }
 
 resolve_device() {
@@ -51,7 +85,10 @@ if requested:
         if entry.get("name") == requested:
             print(f"{entry['name']}|{entry['udid']}")
             raise SystemExit(0)
-    raise SystemExit(f"Simulator device not found: {requested}")
+    raise SystemExit(
+        f"Could not find an available simulator named '{requested}'. "
+        "Open Simulator or Xcode and confirm that device exists."
+    )
 
 prefix = {
     "ipad": "iPad",
@@ -59,14 +96,20 @@ prefix = {
 }.get(requested_class)
 
 if prefix is None:
-    raise SystemExit(f"Unsupported simulator device class: {requested_class}")
+    raise SystemExit(
+        f"Unsupported simulator device class '{requested_class}'. "
+        "Use 'ipad' or 'iphone'."
+    )
 
 for entry in devices:
     if entry.get("name", "").startswith(prefix):
         print(f"{entry['name']}|{entry['udid']}")
         raise SystemExit(0)
 
-raise SystemExit(f"No available {requested_class} simulator device found")
+raise SystemExit(
+    f"No available {requested_class} simulator device was found. "
+    "Install a matching simulator runtime in Xcode first."
+)
 PY
 }
 
@@ -78,15 +121,15 @@ find_app_bundle() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --preset)
-      PRESET="${2:?Missing value for --preset}"
+      PRESET="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --device)
-      DEVICE_NAME="${2:?Missing value for --device}"
+      DEVICE_NAME="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --device-class)
-      DEVICE_CLASS="${2:?Missing value for --device-class}"
+      DEVICE_CLASS="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --build-only)
@@ -98,16 +141,13 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo "Unknown option: $1" >&2
-      usage >&2
-      exit 2
+      usage_error "Unknown option: $1"
       ;;
   esac
 done
 
 if [[ "$DEVICE_CLASS" != "ipad" && "$DEVICE_CLASS" != "iphone" ]]; then
-  echo "--device-class must be 'ipad' or 'iphone'." >&2
-  exit 2
+  usage_error "--device-class must be 'ipad' or 'iphone'."
 fi
 
 if [[ "$PRESET" == "ios-ipad-"* ]]; then
@@ -118,6 +158,9 @@ fi
 
 cd "$ROOT_DIR"
 
+require_command cmake
+require_command xcrun
+
 echo "Configuring preset ${PRESET}"
 cmake --preset "$PRESET"
 
@@ -127,7 +170,8 @@ cmake --build --preset "$PRESET"
 BUILD_DIR="${ROOT_DIR}/build/${PRESET}"
 APP_PATH="$(find_app_bundle "$BUILD_DIR")"
 if [[ -z "$APP_PATH" ]]; then
-  echo "Unable to find hello_pixel.app under ${BUILD_DIR}" >&2
+  echo "Build completed, but hello_pixel.app was not found under ${BUILD_DIR}." >&2
+  echo "Check the CMake preset output above and confirm the app bundle target built successfully." >&2
   exit 1
 fi
 
@@ -148,7 +192,8 @@ xcrun simctl bootstatus "$SIM_UDID" -b
 
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${APP_PATH}/Info.plist")"
 if [[ -z "$BUNDLE_ID" ]]; then
-  echo "Unable to determine CFBundleIdentifier for ${APP_PATH}" >&2
+  echo "Could not determine the CFBundleIdentifier for ${APP_PATH}." >&2
+  echo "Make sure the generated app bundle has a valid Info.plist." >&2
   exit 1
 fi
 

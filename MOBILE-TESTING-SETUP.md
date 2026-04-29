@@ -20,7 +20,7 @@ Short version:
 | --- | --- | --- | --- |
 | Android phone | Android Studio Emulator | QEMU-backed under the hood | Yes, for emulator-based testing |
 | Android tablet | Android Studio Emulator | QEMU-backed under the hood | Yes, for emulator-based testing |
-| Amazon Fire tablet | Android Studio virtual device plus Fire-specific profile | Close enough for initial verification | Partially |
+| Amazon Fire tablet | Custom Android Studio virtual device based on Amazon specs | Close enough for initial verification | Partially |
 | iPhone | Xcode Simulator | None in the supported workflow | No |
 | iPad | Xcode Simulator | None in the supported workflow | No |
 
@@ -29,7 +29,7 @@ So if the question is "can one QEMU-based setup cover all three targets?", the a
 What it can do:
 - Android phone: yes
 - Android tablet: yes
-- Fire tablet: yes for early checks, but not as the whole submission path
+- Fire tablet: yes for early checks through a custom AVD, but not as the whole submission path
 - iPhone: no
 - iPad: no
 
@@ -161,10 +161,11 @@ Use a real Android tablet when you need final confidence in frame pacing, touch 
 
 ## Amazon Fire Tablet Environment
 
-Use Android Studio's Device Manager to create a virtual Amazon-style device for initial verification, then test on a physical Fire tablet before submission.
+Use Android Studio's Device Manager to create a custom virtual Amazon-style device for initial verification, then test on a physical Fire tablet before submission.
 
 Why:
 - Amazon documents a virtual-device path using Android Studio's AVD tooling and Fire tablet specs.
+- Amazon does not provide a built-in Fire tablet profile in the local Android tooling here, so the emulator path starts with a custom hardware profile.
 - Amazon also says virtual-device testing is only an initial step and that physical-device testing is still required before Appstore submission.
 
 Good fit for:
@@ -177,6 +178,20 @@ Not enough by itself for:
 - final Appstore readiness
 - hardware-specific behavior
 - full confidence in performance and tablet feel
+- Appstore retail-page validation
+
+Recommended working options:
+
+1. Create a custom AVD in Android Studio using `New Hardware Profile`, then fill it out from Amazon's published Fire tablet device specifications.
+2. Use that custom AVD for compatibility smoke tests and large-layout checks.
+3. Use a physical Fire tablet for real Fire OS behavior and the required pre-submission device pass.
+4. Use Amazon Live App Testing when you need to test the Appstore-facing flow. LAT sends testers to the app's Amazon Appstore test page, which is the closest match to what customers see in the live store.
+
+Practical implication for this repo:
+
+- there is no built-in `fire-tablet` launcher target right now
+- if you create a custom Fire-style AVD, launch it through the generic Android path with `./tools/run_android_emulator.sh --avd <name>`
+- for store-entry testing, plan on a physical Fire tablet signed in to the Amazon Appstore plus Live App Testing
 
 For 2D apps, enable hardware acceleration in the manifest:
 
@@ -273,10 +288,13 @@ That is the practical line between "useful emulator coverage" and "this still ne
 - Android AVD management: <https://developer.android.com/studio/run/managing-avds>
 - Android hardware-device testing: <https://developer.android.com/studio/run/device>
 - Android quality guidelines: <https://developer.android.com/docs/quality-guidelines/core-app-quality>
-- Amazon virtual Fire testing: <https://www.developer.amazon.com/docs/fire-tablets/ft-testing-without-an-amazon-device.html>
+- Amazon virtual Fire testing with custom AVDs: <https://www.developer.amazon.com/docs/fire-tablets/ft-testing-without-an-amazon-device.html>
+- Amazon Fire tablet device specifications: <https://developer.amazon.com/docs/device-specs/ft-device-specifications.html>
 - Amazon Fire tablet run/install testing: <https://developer.amazon.com/docs/fire-tablets/ft-test-app-on-emulator-or-tablet.html>
 - Amazon Fire tablet ADB setup: <https://developer.amazon.com/docs/fire-tablets/connecting-adb-to-device.html>
 - Amazon Fire tablet test criteria: <https://developer.amazon.com/docs/app-testing/test-criteria.html>
+- Amazon Live App Testing overview: <https://developer.amazon.com/docs/app-testing/live-app-testing-understanding.html>
+- Amazon Live App Testing retail-page flow for testers: <https://developer.amazon.com/docs/app-testing/prepare-app-testers.html>
 - Apple Xcode components and simulator runtimes: <https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes>
 - Apple run in Simulator or on device: <https://developer.apple.com/documentation/xcode/running-your-app-in-simulator-or-on-a-device/>
 - Apple devices and Simulator overview: <https://developer.apple.com/documentation/xcode/devices-and-simulator/>

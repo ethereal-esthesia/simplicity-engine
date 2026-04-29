@@ -1,13 +1,22 @@
 #!/usr/bin/env bash
 
 parallels_wait_for_guest_exec() {
-  local target="${1:?Missing guest target}"
-  local vm_name="${2:?Missing VM name}"
+  local target="${1-}"
+  local vm_name="${2-}"
   local retry_action="${3:-rerun the command}"
   local attempts="${4:-${PARALLELS_GUEST_EXEC_ATTEMPTS:-30}}"
   local delay_seconds="${5:-${PARALLELS_GUEST_EXEC_DELAY_SECONDS:-2}}"
   local attempt
   local last_output=""
+
+  if [[ -z "$target" ]]; then
+    echo "Internal error: parallels_wait_for_guest_exec was called without a guest target." >&2
+    return 2
+  fi
+  if [[ -z "$vm_name" ]]; then
+    echo "Internal error: parallels_wait_for_guest_exec was called without a VM name." >&2
+    return 2
+  fi
 
   echo "Waiting for ${target} guest commands to become available..."
   for ((attempt = 1; attempt <= attempts; attempt += 1)); do
@@ -46,9 +55,14 @@ parallels_wait_for_guest_exec() {
 }
 
 parallels_enable_host_home_sharing() {
-  local vm_name="${1:?Missing VM name}"
+  local vm_name="${1-}"
   local retry_action="${2:-rerun the command}"
   local output
+
+  if [[ -z "$vm_name" ]]; then
+    echo "Internal error: parallels_enable_host_home_sharing was called without a VM name." >&2
+    return 2
+  fi
 
   if output="$(prlctl set "$vm_name" \
     --shf-host on \

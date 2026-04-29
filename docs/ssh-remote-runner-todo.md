@@ -3,14 +3,15 @@
 ## Goal
 Use SSH as the stable local remote-execution layer for emulator and machine targets, instead of relying on emulator-specific guest command APIs.
 
-Working idea: keep Parallels, QEMU, UTM, and physical machines responsible for lifecycle/display, while SSH handles build, test, sync, run, and logs.
+Working idea: keep QEMU, libvirt, UTM, and physical machines responsible for lifecycle/display, while SSH handles build, test, sync, run, and logs. Parallels can stay as an optional paid fallback, but it should not define the long-term remote model.
 
 ## Core Model
 - [ ] Treat every remote target as `user@host` plus platform metadata.
 - [ ] Support Windows and APT-based Linux first.
 - [ ] Keep local macOS builds on `tools/run.sh`.
-- [ ] Keep `tools/parallels/run-windows.sh` as a fallback/bootstrap path, not the long-term remote abstraction.
-- [ ] Make the remote runner emulator-agnostic: no required `prlctl`, QEMU, or UTM command for normal build/run.
+- [ ] Keep `tools/parallels/run-windows.sh` as an optional paid fallback/bootstrap path, not the long-term remote abstraction.
+- [ ] Prefer open-source lifecycle tooling first: libvirt where available, direct QEMU where needed, UTM as a Mac-side convenience layer.
+- [ ] Make the remote runner emulator-agnostic: no required `prlctl`, `virsh`, QEMU, or UTM command for normal build/run.
 - [ ] Store local per-machine settings under `local/remote/`, ignored by git.
 - [ ] Make output quiet by default and write full logs under `logs/`.
 - [ ] Preserve `--console` as the opt-in full-output mode.
@@ -34,7 +35,7 @@ Working idea: keep Parallels, QEMU, UTM, and physical machines responsible for l
 - [ ] Include `REMOTE_REPO`, using the remote platform path style.
 - [ ] Include `REMOTE_PRESET`, defaulting to `debug` for Windows and `linux-debug` for Linux if needed.
 - [ ] Include `REMOTE_TARGET`, defaulting to `hello_pixel`.
-- [ ] Include optional `REMOTE_DISPLAY_MODE`, for notes only at first: `parallels`, `rdp`, `vnc`, `spice`, or `manual`.
+- [ ] Include optional `REMOTE_DISPLAY_MODE`, for notes only at first: `qemu`, `utm`, `parallels`, `rdp`, `vnc`, `spice`, or `manual`.
 
 ## Runner Shape
 - [ ] Add `tools/remote/run.sh`.
@@ -80,8 +81,9 @@ Working idea: keep Parallels, QEMU, UTM, and physical machines responsible for l
 
 ## Display Model
 - [ ] Keep display separate from execution.
-- [ ] For Parallels Windows, use Coherence/shared app windows for the visible app.
-- [ ] For QEMU/UTM/Linux, document VNC/SPICE/RDP-style display options.
+- [ ] Treat touch-capable hardware as separate from VM execution. VMs can cover build and smoke validation, but real touch hardware is still required for touchscreen signoff.
+- [ ] Prefer open display paths first: QEMU/libvirt plus VNC/SPICE/RDP, or UTM as a local Mac frontend.
+- [ ] Keep Parallels Coherence/shared app windows documented only as an optional paid alternative.
 - [ ] Do not promise that SSH alone shows a remote GUI on the Mac desktop.
 - [ ] Add clear troubleshooting notes for "build succeeded but no window appeared."
 
@@ -102,13 +104,14 @@ Working idea: keep Parallels, QEMU, UTM, and physical machines responsible for l
 - [ ] Test remote build without launch.
 - [ ] Test remote build with tests.
 - [ ] Test remote launch behavior separately from build success.
-- [ ] Confirm the runner works with a Parallels VM.
-- [ ] Confirm the runner works with at least one non-Parallels target before making it the primary documented remote path.
+- [ ] Confirm the runner works with at least one QEMU/libvirt or UTM-backed target before making it the primary documented remote path.
+- [ ] Confirm the runner also works with a Parallels VM as an optional paid alternative.
 
 ## Open Questions
 - [ ] Should the remote runner live under `tools/remote/` or replace the Parallels runner entry point later?
-- [ ] Should Windows SSH setup be part of `tools/parallels/setup.sh` or a separate remote setup script?
+- [ ] Should Windows SSH setup be part of `tools/parallels/setup.sh` or move into a backend-neutral remote setup script?
 - [ ] Should remote configs be shell `.env` files, JSON, or TOML?
 - [ ] Should the guest build scripts move out of `tools/parallels/` once SSH is the primary remote abstraction?
 - [ ] How much VM lifecycle should the remote runner attempt, if any?
 - [ ] Do we want a named target registry so commands can use `--target-machine windows-arm` instead of a config path?
+- [ ] Do we want to standardize on libvirt XML / `virsh` metadata as the first-class open VM description format?

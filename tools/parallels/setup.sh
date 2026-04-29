@@ -20,10 +20,30 @@ Options:
 EOF
 }
 
+usage_error() {
+  local message="$1"
+
+  echo "$message" >&2
+  echo >&2
+  usage >&2
+  exit 2
+}
+
+require_option_value() {
+  local option="$1"
+  local value="${2-}"
+
+  if [[ -z "$value" || "$value" == --* ]]; then
+    usage_error "Missing value for ${option}."
+  fi
+
+  printf '%s\n' "$value"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --target)
-      TARGET="${2:?Missing value for --target}"
+      TARGET="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     -h|--help)
@@ -31,20 +51,18 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo "Unknown option: $1" >&2
-      usage >&2
-      exit 2
+      usage_error "Unknown option: $1"
       ;;
   esac
 done
 
 if [[ "$TARGET" != "windows" && "$TARGET" != "linux" ]]; then
-  echo "--target must be 'windows' or 'linux'." >&2
-  exit 2
+  usage_error "--target must be 'windows' or 'linux'."
 fi
 
 if ! command -v prlctl >/dev/null 2>&1; then
-  echo "prlctl was not found. Install Parallels Desktop command-line tools." >&2
+  echo "Parallels command-line tools were not found (`prlctl`)." >&2
+  echo "Install the Parallels Desktop CLI tools, then rerun setup." >&2
   exit 1
 fi
 

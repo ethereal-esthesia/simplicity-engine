@@ -49,6 +49,26 @@ Options:
 EOF
 }
 
+usage_error() {
+  local message="$1"
+
+  echo "$message" >&2
+  echo >&2
+  usage >&2
+  exit 2
+}
+
+require_option_value() {
+  local option="$1"
+  local value="${2-}"
+
+  if [[ -z "$value" || "$value" == --* ]]; then
+    usage_error "Missing value for ${option}."
+  fi
+
+  printf '%s\n' "$value"
+}
+
 host_repo_relative_path() {
   local host_home
 
@@ -142,27 +162,27 @@ run_prlctl_set_logged() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --vm)
-      VM_NAME="${2:?Missing value for --vm}"
+      VM_NAME="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --guest-repo)
-      GUEST_REPO="${2:?Missing value for --guest-repo}"
+      GUEST_REPO="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --preset)
-      PRESET="${2:?Missing value for --preset}"
+      PRESET="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --target)
-      TARGET="${2:?Missing value for --target}"
+      TARGET="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --sync)
-      SYNC="${2:?Missing value for --sync}"
+      SYNC="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --host-repo)
-      HOST_REPO="${2:?Missing value for --host-repo}"
+      HOST_REPO="$(require_option_value "$1" "${2-}")"
       shift 2
       ;;
     --test)
@@ -194,20 +214,18 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo "Unknown option: $1" >&2
-      usage >&2
-      exit 2
+      usage_error "Unknown option: $1"
       ;;
   esac
 done
 
 if [[ "$SYNC" != "host" && "$SYNC" != "pull" && "$SYNC" != "none" ]]; then
-  echo "--sync must be 'host', 'pull', or 'none'." >&2
-  exit 2
+  usage_error "--sync must be 'host', 'pull', or 'none'."
 fi
 
 if ! command -v prlctl >/dev/null 2>&1; then
-  echo "prlctl was not found. Install Parallels Desktop command-line tools." >&2
+  echo "Parallels command-line tools were not found (`prlctl`)." >&2
+  echo "Install the Parallels Desktop CLI tools, then rerun the Windows build." >&2
   exit 1
 fi
 
@@ -225,7 +243,7 @@ append_log ""
 
 status="$(prlctl status "$VM_NAME" 2>/dev/null || true)"
 if [[ -z "$status" ]]; then
-  echo "Parallels VM not found: $VM_NAME" >&2
+  echo "Parallels VM not found: ${VM_NAME}" >&2
   echo "Available VMs:" >&2
   prlctl list --all >&2
   exit 1
@@ -267,7 +285,8 @@ if [[ "$SYNC" == "host" ]]; then
   HOST_REPO="${HOST_REPO:-$(default_host_repo)}"
   HOST_BRANCH="$(host_branch)"
   if [[ -z "$HOST_BRANCH" ]]; then
-    echo "--sync host requires the Mac checkout to be on a named branch." >&2
+    echo "--sync host requires the Mac checkout to be on a named git branch." >&2
+    echo "Switch to a named branch first, then rerun the Windows build." >&2
     exit 1
   fi
 
