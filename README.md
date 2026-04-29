@@ -95,6 +95,27 @@ For iPhone Simulator instead:
 ./tools/run_ios_iphone.sh
 ```
 
+### Android Tablet Emulator
+
+To build, install, and launch the sample app on a running Android emulator, or automatically start the first tablet-flavored AVD it finds:
+
+```bash
+./tools/run_android_tablet.sh
+```
+
+Useful variants:
+
+```bash
+./tools/run_android_tablet.sh --build-only
+./tools/run_android_emulator.sh --avd Half_Screen_Tablet_API_36.1
+```
+
+Requirements for the Android path:
+- Android SDK with platform-tools, emulator, and at least one system image
+- Android NDK `27.2.12479018`
+- Android CMake `3.22.1`
+- Android Studio's bundled JBR or another compatible JDK
+
 Manual debug equivalent:
 
 ```bash

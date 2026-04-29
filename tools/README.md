@@ -6,6 +6,8 @@ Utility scripts for local development, packaging, and release.
 
 - `build-in-container.sh`: Build Linux and Windows targets inside the Docker build image.
 - `run.sh`: Configure, build, optionally test, and launch the sample desktop app on the current host.
+- `run_android_emulator.sh`: Build and install the Android sample app on a running or auto-started emulator.
+- `run_android_tablet.sh`: Stable Android tablet emulator entrypoint.
 - `run_ios_ipad.sh`: Stable iPad Simulator entrypoint.
 - `run_ios_iphone.sh`: Stable iPhone Simulator entrypoint.
 - `run_ios_simulator.sh`: Configure, build, and launch the iOS app on an iPad simulator by default, or an iPhone simulator when requested.

@@ -1,0 +1,2 @@
+rootProject.name = 'simplicity-engine-android'
+include ':app'

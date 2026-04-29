@@ -101,6 +101,15 @@ These are the tablet families we should be able to point to when we say the engi
 - [ ] Make target names stable and documented.
 - [ ] Make unsupported host/target combinations fail with a short, direct explanation.
 
+## Platform Shell Polish
+
+- [ ] Replace stock template branding in platform shells before calling a target "supported".
+- [ ] Android:
+  - [ ] Replace the default SDL launcher icons in `android/app/src/main/res/mipmap-*`.
+  - [ ] Decide whether the first-launch experience should show a custom splash, a plain background, or no splash at all.
+- [ ] Apple:
+  - [ ] Make sure iPhone/iPad app icons and launch presentation match engine branding once we move past the placeholder sample phase.
+
 ## Target Rules
 
 - [ ] `ios` and `ipados` should share as much engine code as possible.
