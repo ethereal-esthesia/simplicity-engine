@@ -25,7 +25,7 @@ exact commands.
 Create a local, gitignored script profile after the VM is registered:
 
 ```bash
-./scripts/parallels/setup.sh --target windows
+./tools/parallels/setup.sh --target windows
 ```
 
 The setup script verifies the Windows repo path inside the VM. If the folder is
@@ -43,22 +43,22 @@ defaulting to `\\Mac\Home\<host repo path relative to $HOME>`.
 From the macOS repo root:
 
 ```bash
-./scripts/parallels/run-windows.sh
+./tools/parallels/run-windows.sh
 ```
 
 Common options:
 
 ```bash
-./scripts/parallels/run-windows.sh --no-launch
-./scripts/parallels/run-windows.sh --sync pull
-./scripts/parallels/run-windows.sh --sync none
-./scripts/parallels/run-windows.sh --host-repo '\\Mac\Home\Project\simplicity-engine'
-./scripts/parallels/run-windows.sh --preset release
-./scripts/parallels/run-windows.sh --target smoke_sdl_init --no-launch
-./scripts/parallels/run-windows.sh --test
-./scripts/parallels/run-windows.sh --native
-./scripts/parallels/run-windows.sh --console
-./scripts/parallels/run-windows.sh --guest-repo 'C:\Users\shane\src\simplicity-engine'
+./tools/parallels/run-windows.sh --no-launch
+./tools/parallels/run-windows.sh --sync pull
+./tools/parallels/run-windows.sh --sync none
+./tools/parallels/run-windows.sh --host-repo '\\Mac\Home\Project\simplicity-engine'
+./tools/parallels/run-windows.sh --preset release
+./tools/parallels/run-windows.sh --target smoke_sdl_init --no-launch
+./tools/parallels/run-windows.sh --test
+./tools/parallels/run-windows.sh --native
+./tools/parallels/run-windows.sh --console
+./tools/parallels/run-windows.sh --guest-repo 'C:\Users\shane\src\simplicity-engine'
 ```
 
 By default, the runner fetches from the Mac checkout through the configured Parallels shared folder and checks out that branch in the Windows VM before building.

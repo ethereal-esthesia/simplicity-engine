@@ -23,7 +23,7 @@ sudo apt install -y build-essential cmake ninja-build git
 Create a local, gitignored script profile after the VM is registered:
 
 ```bash
-./scripts/parallels/setup.sh --target linux
+./tools/parallels/setup.sh --target linux
 ```
 
 The setup script verifies the Linux repo path inside the VM. If the folder is
@@ -47,21 +47,21 @@ sudo apt install -y pkg-config libx11-dev libxext-dev libxrandr-dev libxcursor-d
 From the macOS repo root:
 
 ```bash
-./scripts/parallels/linux/run-linux.sh
+./tools/parallels/linux/run-linux.sh
 ```
 
 Common options:
 
 ```bash
-./scripts/parallels/linux/run-linux.sh --no-launch
-./scripts/parallels/linux/run-linux.sh --vm "Debian 12"
-./scripts/parallels/linux/run-linux.sh --sync pull
-./scripts/parallels/linux/run-linux.sh --sync none
-./scripts/parallels/linux/run-linux.sh --host-repo /media/psf/Home/Project/simplicity-engine
-./scripts/parallels/linux/run-linux.sh --preset linux-release
-./scripts/parallels/linux/run-linux.sh --target smoke_sdl_init --no-launch
-./scripts/parallels/linux/run-linux.sh --test
-./scripts/parallels/linux/run-linux.sh --guest-repo /home/shane/src/simplicity-engine
+./tools/parallels/linux/run-linux.sh --no-launch
+./tools/parallels/linux/run-linux.sh --vm "Debian 12"
+./tools/parallels/linux/run-linux.sh --sync pull
+./tools/parallels/linux/run-linux.sh --sync none
+./tools/parallels/linux/run-linux.sh --host-repo /media/psf/Home/Project/simplicity-engine
+./tools/parallels/linux/run-linux.sh --preset linux-release
+./tools/parallels/linux/run-linux.sh --target smoke_sdl_init --no-launch
+./tools/parallels/linux/run-linux.sh --test
+./tools/parallels/linux/run-linux.sh --guest-repo /home/shane/src/simplicity-engine
 ```
 
 By default, the runner fetches and fast-forwards from the Mac checkout through the configured Parallels shared folder before building.

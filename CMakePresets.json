@@ -63,6 +63,32 @@
       }
     },
     {
+      "name": "ios-iphone-simulator-debug",
+      "displayName": "iOS iPhone Simulator Debug",
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build/ios-iphone-simulator-debug",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "iOS",
+        "CMAKE_OSX_SYSROOT": "iphonesimulator",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "17.0",
+        "SIMPLICITY_ENGINE_IOS_DEVICE_FAMILY": "1"
+      }
+    },
+    {
+      "name": "ios-iphone-simulator-release",
+      "displayName": "iOS iPhone Simulator Release",
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build/ios-iphone-simulator-release",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "iOS",
+        "CMAKE_OSX_SYSROOT": "iphonesimulator",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "17.0",
+        "SIMPLICITY_ENGINE_IOS_DEVICE_FAMILY": "1"
+      }
+    },
+    {
       "name": "ios-ipad-simulator-debug",
       "displayName": "iOS iPad Simulator Debug",
       "generator": "Xcode",
@@ -113,6 +139,20 @@
     {
       "name": "windows-release",
       "configurePreset": "windows-release"
+    },
+    {
+      "name": "ios-iphone-simulator-debug",
+      "configurePreset": "ios-iphone-simulator-debug",
+      "targets": [
+        "hello_pixel"
+      ]
+    },
+    {
+      "name": "ios-iphone-simulator-release",
+      "configurePreset": "ios-iphone-simulator-release",
+      "targets": [
+        "hello_pixel"
+      ]
     },
     {
       "name": "ios-ipad-simulator-debug",

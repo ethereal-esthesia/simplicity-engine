@@ -8,8 +8,8 @@ Working idea: keep Parallels, QEMU, UTM, and physical machines responsible for l
 ## Core Model
 - [ ] Treat every remote target as `user@host` plus platform metadata.
 - [ ] Support Windows and APT-based Linux first.
-- [ ] Keep local macOS builds on `scripts/run.sh`.
-- [ ] Keep `scripts/parallels/run-windows.sh` as a fallback/bootstrap path, not the long-term remote abstraction.
+- [ ] Keep local macOS builds on `tools/run.sh`.
+- [ ] Keep `tools/parallels/run-windows.sh` as a fallback/bootstrap path, not the long-term remote abstraction.
 - [ ] Make the remote runner emulator-agnostic: no required `prlctl`, QEMU, or UTM command for normal build/run.
 - [ ] Store local per-machine settings under `local/remote/`, ignored by git.
 - [ ] Make output quiet by default and write full logs under `logs/`.
@@ -37,7 +37,7 @@ Working idea: keep Parallels, QEMU, UTM, and physical machines responsible for l
 - [ ] Include optional `REMOTE_DISPLAY_MODE`, for notes only at first: `parallels`, `rdp`, `vnc`, `spice`, or `manual`.
 
 ## Runner Shape
-- [ ] Add `scripts/remote/run.sh`.
+- [ ] Add `tools/remote/run.sh`.
 - [ ] Options:
   - [ ] `--config <path>`
   - [ ] `--host <user@host>`
@@ -65,7 +65,7 @@ Working idea: keep Parallels, QEMU, UTM, and physical machines responsible for l
 
 ## Windows Remote Build
 - [ ] Keep the Windows build logic in PowerShell on the guest, but invoke it over SSH.
-- [ ] Reuse or adapt `scripts/parallels/guest-build-run.ps1`.
+- [ ] Reuse or adapt `tools/parallels/guest-build-run.ps1`.
 - [ ] Keep `VsDevCmd.bat` probing and MSVC target detection.
 - [ ] Keep stale MSVC CMake cache detection.
 - [ ] Launch GUI apps through a detached Windows process when `--launch` is used.
@@ -73,7 +73,7 @@ Working idea: keep Parallels, QEMU, UTM, and physical machines responsible for l
 - [ ] If SSH cannot launch visible GUI apps directly, document the display launch path separately.
 
 ## Linux Remote Build
-- [ ] Reuse or adapt `scripts/parallels/linux/guest-build-run.sh`.
+- [ ] Reuse or adapt `tools/parallels/linux/guest-build-run.sh`.
 - [ ] Verify display behavior under common local VM setups.
 - [ ] Support `DISPLAY` forwarding only as an explicit opt-in, not the default.
 - [ ] Prefer launching on the guest's existing display when available.
@@ -95,7 +95,7 @@ Working idea: keep Parallels, QEMU, UTM, and physical machines responsible for l
 - [ ] Handle stale host keys with a concise pointer to SSH's own warning.
 
 ## Tests and Probes
-- [ ] Add `scripts/remote/run.sh --preflight`.
+- [ ] Add `tools/remote/run.sh --preflight`.
 - [ ] Test Windows `ssh whoami`.
 - [ ] Test Linux `ssh whoami`.
 - [ ] Test remote `git status --short --branch`.
@@ -106,9 +106,9 @@ Working idea: keep Parallels, QEMU, UTM, and physical machines responsible for l
 - [ ] Confirm the runner works with at least one non-Parallels target before making it the primary documented remote path.
 
 ## Open Questions
-- [ ] Should the remote runner live under `scripts/remote/` or replace the Parallels runner entry point later?
-- [ ] Should Windows SSH setup be part of `scripts/parallels/setup.sh` or a separate remote setup script?
+- [ ] Should the remote runner live under `tools/remote/` or replace the Parallels runner entry point later?
+- [ ] Should Windows SSH setup be part of `tools/parallels/setup.sh` or a separate remote setup script?
 - [ ] Should remote configs be shell `.env` files, JSON, or TOML?
-- [ ] Should the guest build scripts move out of `scripts/parallels/` once SSH is the primary remote abstraction?
+- [ ] Should the guest build scripts move out of `tools/parallels/` once SSH is the primary remote abstraction?
 - [ ] How much VM lifecycle should the remote runner attempt, if any?
 - [ ] Do we want a named target registry so commands can use `--target-machine windows-arm` instead of a config path?

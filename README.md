@@ -67,16 +67,16 @@ winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--pass
 Demo run (default debug `hello_pixel` build):
 
 ```bash
-./scripts/run.sh
+./tools/run.sh
 ```
 
 Useful variants:
 
 ```bash
-./scripts/run.sh --no-launch
-./scripts/run.sh --test
-./scripts/run.sh --preset release
-./scripts/run.sh --console
+./tools/run.sh --no-launch
+./tools/run.sh --test
+./tools/run.sh --preset release
+./tools/run.sh --console
 ```
 
 By default, build and app output is written to `logs/`. Use `--console` when you want the full output attached to the current shell.
@@ -86,7 +86,13 @@ By default, build and app output is written to `logs/`. Use `--console` when you
 To build the sample app as an iPad-form iOS app and launch it in Simulator:
 
 ```bash
-./tools/run_ios_simulator.sh
+./tools/run_ios_ipad.sh
+```
+
+For iPhone Simulator instead:
+
+```bash
+./tools/run_ios_iphone.sh
 ```
 
 Manual debug equivalent:

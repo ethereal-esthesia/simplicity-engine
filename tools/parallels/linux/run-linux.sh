@@ -13,9 +13,9 @@ LAUNCH=1
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
-# shellcheck source=scripts/parallels/install-hints.sh
+# shellcheck source=tools/parallels/install-hints.sh
 source "${SCRIPT_DIR}/../install-hints.sh"
-# shellcheck source=scripts/parallels/guest-exec.sh
+# shellcheck source=tools/parallels/guest-exec.sh
 source "${SCRIPT_DIR}/../guest-exec.sh"
 
 LOCAL_CONFIG="${REPO_ROOT}/local/parallels/linux.env"
@@ -26,7 +26,7 @@ fi
 
 usage() {
   cat <<'EOF'
-Usage: scripts/parallels/linux/run-linux.sh [options]
+Usage: tools/parallels/linux/run-linux.sh [options]
 
 Options:
   --vm <name>             Parallels VM name. Default: Linux
@@ -184,7 +184,7 @@ if [[ "$SYNC" == "host" ]]; then
 fi
 
 cmd=(prlctl exec "$VM_NAME" --current-user bash \
-  "${GUEST_REPO}/scripts/parallels/linux/guest-build-run.sh" \
+  "${GUEST_REPO}/tools/parallels/linux/guest-build-run.sh" \
   --repo "$GUEST_REPO" \
   --preset "$PRESET" \
   --target "$TARGET" \

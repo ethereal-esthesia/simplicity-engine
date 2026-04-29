@@ -9,7 +9,7 @@ RUN_TESTS=0
 LAUNCH=0
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=scripts/parallels/install-hints.sh
+# shellcheck source=tools/parallels/install-hints.sh
 source "${SCRIPT_DIR}/../install-hints.sh"
 
 usage() {

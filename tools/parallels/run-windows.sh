@@ -15,9 +15,9 @@ CONSOLE_OUTPUT=0
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-# shellcheck source=scripts/parallels/install-hints.sh
+# shellcheck source=tools/parallels/install-hints.sh
 source "${SCRIPT_DIR}/install-hints.sh"
-# shellcheck source=scripts/parallels/guest-exec.sh
+# shellcheck source=tools/parallels/guest-exec.sh
 source "${SCRIPT_DIR}/guest-exec.sh"
 
 LOCAL_CONFIG="${REPO_ROOT}/local/parallels/windows.env"
@@ -28,7 +28,7 @@ fi
 
 usage() {
   cat <<'EOF'
-Usage: scripts/parallels/run-windows.sh [options]
+Usage: tools/parallels/run-windows.sh [options]
 
 Options:
   --vm <name>             Parallels VM name. Default: Windows 11

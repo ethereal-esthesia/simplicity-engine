@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PRESET="ios-ipad-simulator-debug"
 DEVICE_NAME=""
 BUILD_ONLY=0
+DEVICE_CLASS="ipad"
 
 usage() {
   cat <<'EOF'
@@ -13,7 +14,9 @@ Usage: tools/run_ios_simulator.sh [options]
 
 Options:
   --preset <name>    CMake preset to configure/build. Default: ios-ipad-simulator-debug
-  --device <name>    Exact simulator device name. Default: first available iPad simulator
+  --device <name>    Exact simulator device name. Default: first available device in the chosen class
+  --device-class <name>
+                     Simulator family to use: ipad or iphone. Default: ipad
   --build-only       Configure and build, but do not boot/install/launch
   -h, --help         Show this help
 EOF
@@ -21,16 +24,18 @@ EOF
 
 resolve_device() {
   local requested_name="$1"
+  local requested_class="$2"
 
   local simctl_json
   simctl_json="$(xcrun simctl list devices available -j)"
 
-  SIMCTL_JSON="$simctl_json" python3 - "$requested_name" <<'PY'
+  SIMCTL_JSON="$simctl_json" python3 - "$requested_name" "$requested_class" <<'PY'
 import json
 import os
 import sys
 
 requested = sys.argv[1]
+requested_class = sys.argv[2]
 data = json.loads(os.environ["SIMCTL_JSON"])
 
 devices = []
@@ -48,12 +53,20 @@ if requested:
             raise SystemExit(0)
     raise SystemExit(f"Simulator device not found: {requested}")
 
+prefix = {
+    "ipad": "iPad",
+    "iphone": "iPhone",
+}.get(requested_class)
+
+if prefix is None:
+    raise SystemExit(f"Unsupported simulator device class: {requested_class}")
+
 for entry in devices:
-    if entry.get("name", "").startswith("iPad"):
+    if entry.get("name", "").startswith(prefix):
         print(f"{entry['name']}|{entry['udid']}")
         raise SystemExit(0)
 
-raise SystemExit("No available iPad simulator device found")
+raise SystemExit(f"No available {requested_class} simulator device found")
 PY
 }
 
@@ -72,6 +85,10 @@ while [[ $# -gt 0 ]]; do
       DEVICE_NAME="${2:?Missing value for --device}"
       shift 2
       ;;
+    --device-class)
+      DEVICE_CLASS="${2:?Missing value for --device-class}"
+      shift 2
+      ;;
     --build-only)
       BUILD_ONLY=1
       shift
@@ -87,6 +104,17 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "$DEVICE_CLASS" != "ipad" && "$DEVICE_CLASS" != "iphone" ]]; then
+  echo "--device-class must be 'ipad' or 'iphone'." >&2
+  exit 2
+fi
+
+if [[ "$PRESET" == "ios-ipad-"* ]]; then
+  DEVICE_CLASS="ipad"
+elif [[ "$PRESET" == "ios-iphone-"* ]]; then
+  DEVICE_CLASS="iphone"
+fi
 
 cd "$ROOT_DIR"
 
@@ -109,7 +137,7 @@ if [[ "$BUILD_ONLY" -eq 1 ]]; then
   exit 0
 fi
 
-DEVICE_RECORD="$(resolve_device "$DEVICE_NAME")"
+DEVICE_RECORD="$(resolve_device "$DEVICE_NAME" "$DEVICE_CLASS")"
 SIM_NAME="${DEVICE_RECORD%%|*}"
 SIM_UDID="${DEVICE_RECORD##*|}"
 

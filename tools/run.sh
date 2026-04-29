@@ -11,12 +11,12 @@ LOG_PATH=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# shellcheck source=scripts/install-hints.sh
+# shellcheck source=tools/install-hints.sh
 source "${SCRIPT_DIR}/install-hints.sh"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/run.sh [options]
+Usage: tools/run.sh [options]
 
 Options:
   --preset <name>         CMake preset to build. Default: debug
