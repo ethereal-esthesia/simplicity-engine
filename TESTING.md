@@ -34,6 +34,13 @@ Debug:
 ./scripts/run.sh
 ```
 
+Waterfall window:
+
+```bash
+cmake --build --preset debug --target waterfall_window
+./build/debug/waterfall_window
+```
+
 Release:
 
 ```bash

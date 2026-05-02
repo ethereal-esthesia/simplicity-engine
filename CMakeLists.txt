@@ -4,7 +4,11 @@ if(POLICY CMP0135)
   cmake_policy(SET CMP0135 NEW)
 endif()
 
-project(simplicity_engine C CXX)
+if(APPLE)
+  project(simplicity_engine C CXX OBJCXX)
+else()
+  project(simplicity_engine C CXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -45,13 +49,23 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL3)
 
+add_library(simplicity_engine STATIC
+  src/simplicity_engine.cpp
+  src/simplicity_engine.hpp)
+target_include_directories(simplicity_engine PUBLIC src)
+target_link_libraries(simplicity_engine PUBLIC SDL3::SDL3)
+
 if(ANDROID)
   add_library(${SIMPLICITY_ENGINE_APP_TARGET} SHARED src/main.cpp)
 else()
   add_executable(${SIMPLICITY_ENGINE_APP_TARGET} src/main.cpp)
+  add_executable(waterfall_window src/waterfall_main.cpp)
 endif()
 
-target_link_libraries(${SIMPLICITY_ENGINE_APP_TARGET} PRIVATE SDL3::SDL3)
+target_link_libraries(${SIMPLICITY_ENGINE_APP_TARGET} PRIVATE simplicity_engine)
+if(NOT ANDROID)
+  target_link_libraries(waterfall_window PRIVATE simplicity_engine)
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
   set_target_properties(
     ${SIMPLICITY_ENGINE_APP_TARGET} PROPERTIES
@@ -65,16 +79,21 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
 endif()
 if(WIN32)
   set_target_properties(${SIMPLICITY_ENGINE_APP_TARGET} PROPERTIES WIN32_EXECUTABLE TRUE)
+  if(TARGET waterfall_window)
+    set_target_properties(waterfall_window PROPERTIES WIN32_EXECUTABLE TRUE)
+  endif()
 endif()
 
 if(NOT ANDROID)
   add_executable(smoke_sdl_init tests/smoke_sdl_init.cpp)
   add_executable(smoke_fast_rng tests/smoke_fast_rng.cpp)
   add_executable(test_fast_rng_vectors tests/test_fast_rng_vectors.cpp)
+  add_executable(test_palette_vectors tests/test_palette_vectors.cpp)
 
   target_link_libraries(smoke_sdl_init PRIVATE SDL3::SDL3)
   target_include_directories(smoke_fast_rng PRIVATE src)
   target_include_directories(test_fast_rng_vectors PRIVATE src)
+  target_link_libraries(test_palette_vectors PRIVATE simplicity_engine)
 endif()
 
 if(APPLE AND NOT ANDROID)
@@ -103,4 +122,6 @@ if(NOT ANDROID)
   set_tests_properties(smoke_fast_rng PROPERTIES LABELS smoke)
   add_test(NAME test_fast_rng_vectors COMMAND test_fast_rng_vectors)
   set_tests_properties(test_fast_rng_vectors PROPERTIES LABELS "rng;full")
+  add_test(NAME test_palette_vectors COMMAND test_palette_vectors)
+  set_tests_properties(test_palette_vectors PROPERTIES LABELS "palette;full")
 endif()

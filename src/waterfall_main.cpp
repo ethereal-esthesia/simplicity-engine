@@ -5,5 +5,5 @@
 int main(int argc, char* argv[]) {
     (void)argc;
     (void)argv;
-    return simplicity::run_hello_pixel_app();
+    return simplicity::run_waterfall_demo_app();
 }

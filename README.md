@@ -138,6 +138,14 @@ Demo run (default debug `hello_pixel` build):
 ./scripts/run.sh
 ```
 
+Waterfall window demo:
+
+```bash
+cmake --preset debug
+cmake --build --preset debug --target waterfall_window
+./build/debug/waterfall_window
+```
+
 Useful variants:
 
 ```bash
