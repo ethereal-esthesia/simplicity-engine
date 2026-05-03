@@ -212,9 +212,19 @@ void WaterfallSurface::push_row(const std::vector<std::uint8_t>& row) {
             intensities_.begin() + static_cast<std::ptrdiff_t>(row_width),
             intensities_.end(),
             intensities_.begin());
+        std::move(
+            pixels_.begin() + static_cast<std::ptrdiff_t>(row_width),
+            pixels_.end(),
+            pixels_.begin());
     }
-    std::copy(row.begin(), row.end(), intensities_.end() - static_cast<std::ptrdiff_t>(row_width));
-    rebuild_pixels();
+
+    auto intensity_output = intensities_.end() - static_cast<std::ptrdiff_t>(row_width);
+    auto pixel_output = pixels_.end() - static_cast<std::ptrdiff_t>(row_width);
+    for (std::size_t index = 0; index < row_width; ++index) {
+        const auto intensity = row[index];
+        intensity_output[static_cast<std::ptrdiff_t>(index)] = intensity;
+        pixel_output[static_cast<std::ptrdiff_t>(index)] = pack_argb(palette_[intensity]);
+    }
 }
 
 void WaterfallSurface::push_demo_row(double seconds) {
