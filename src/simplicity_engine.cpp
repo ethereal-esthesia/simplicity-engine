@@ -375,7 +375,8 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
         }
 
         int rows_this_frame = 0;
-        while (rows_this_frame < 16 && (row_interval_seconds == 0.0 || seconds >= next_row_seconds)) {
+        const int max_rows_this_frame = row_interval_seconds == 0.0 ? 4096 : 16;
+        while (rows_this_frame < max_rows_this_frame && (row_interval_seconds == 0.0 || seconds >= next_row_seconds)) {
             std::vector<std::uint8_t> row;
             {
                 std::lock_guard<std::mutex> lock(pending_rows_mutex);

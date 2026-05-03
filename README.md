@@ -152,6 +152,8 @@ The same executable can render caller-provided indexed rows from stdin:
 ./build/debug/pixel_waterfall --stdin-rows 320 192 --hue 210 --row-rate 90
 ```
 
+Use `--row-rate 0` for unpaced streams, such as dense one-row-per-sample analysis data.
+
 Useful variants:
 
 ```bash
