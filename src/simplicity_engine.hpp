@@ -18,6 +18,7 @@ struct Rgba {
 
 struct AppConfig {
     std::string title;
+    std::string ready_message;
     int window_width = 960;
     int window_height = 540;
     bool starts_fullscreen = false;

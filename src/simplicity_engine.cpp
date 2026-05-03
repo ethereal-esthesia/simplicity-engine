@@ -161,6 +161,11 @@ int run_render_app(const AppConfig& config, const RenderCallback& render) {
         return 1;
     }
 
+    if (!config.ready_message.empty()) {
+        std::printf("%s\n", config.ready_message.c_str());
+        std::fflush(stdout);
+    }
+
     bool running = true;
     while (running) {
         running = poll_until_quit();
@@ -321,6 +326,7 @@ int run_hello_pixel_app() {
 int run_pixel_waterfall_demo_app() {
     AppConfig config;
     config.title = "Simplicity Engine - Pixel Waterfall";
+    config.ready_message = "SIMPLICITY_PIXEL_WATERFALL_READY";
     config.window_width = 960;
     config.window_height = 576;
 
