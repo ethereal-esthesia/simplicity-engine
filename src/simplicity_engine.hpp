@@ -58,6 +58,6 @@ private:
 
 int run_hello_pixel_app();
 int run_pixel_waterfall_demo_app();
-int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, double rows_per_second);
+int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, double rows_per_second, int total_rows = 0);
 
 } // namespace simplicity

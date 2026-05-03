@@ -29,7 +29,8 @@ bool parse_double(const char* value, double& output) {
 }
 
 void print_usage(const char* executable) {
-    std::cerr << "Usage: " << executable << " [--stdin-rows WIDTH HEIGHT] [--hue DEGREES] [--row-rate FPS]\n";
+    std::cerr << "Usage: " << executable
+              << " [--stdin-rows WIDTH HEIGHT] [--hue DEGREES] [--row-rate FPS] [--total-rows ROWS]\n";
 }
 
 } // namespace
@@ -38,6 +39,7 @@ int main(int argc, char* argv[]) {
     bool read_stdin_rows = false;
     int width = 320;
     int height = 192;
+    int total_rows = 0;
     double hue_degrees = 210.0;
     double rows_per_second = 90.0;
 
@@ -63,6 +65,12 @@ int main(int argc, char* argv[]) {
                 return 2;
             }
             ++index;
+        } else if (std::strcmp(argv[index], "--total-rows") == 0) {
+            if (index + 1 >= argc || !parse_int(argv[index + 1], total_rows)) {
+                print_usage(argv[0]);
+                return 2;
+            }
+            ++index;
         } else if (std::strcmp(argv[index], "--help") == 0) {
             print_usage(argv[0]);
             return 0;
@@ -73,7 +81,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (read_stdin_rows) {
-        return simplicity::run_pixel_waterfall_stream_app(width, height, hue_degrees, rows_per_second);
+        return simplicity::run_pixel_waterfall_stream_app(width, height, hue_degrees, rows_per_second, total_rows);
     }
 
     return simplicity::run_pixel_waterfall_demo_app();

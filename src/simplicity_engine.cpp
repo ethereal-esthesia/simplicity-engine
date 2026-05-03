@@ -403,7 +403,7 @@ int run_pixel_waterfall_demo_app() {
     });
 }
 
-int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, double rows_per_second) {
+int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, double rows_per_second, int total_rows) {
     AppConfig config;
     config.title = "Simplicity Engine - Pixel Waterfall";
     config.ready_message = "SIMPLICITY_PIXEL_WATERFALL_READY";
@@ -412,6 +412,7 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
 
     const int row_width = std::max(1, width);
     const int row_count = std::max(1, height);
+    const std::int64_t total_row_count = std::max(0, total_rows);
     WaterfallSurface waterfall(row_width, row_count, hue_degrees);
     std::deque<std::vector<std::uint8_t>> pending_rows;
     std::deque<std::vector<std::uint8_t>> row_history;
@@ -455,6 +456,7 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
 
     double stream_start_seconds = 0.0;
     std::int64_t rows_presented = 0;
+    bool auto_paused_at_end = false;
     const double row_interval_seconds = rows_per_second > 0.0 ? 1.0 / rows_per_second : 0.0;
 
     const int result = run_render_app(config, [&](SDL_Renderer& renderer, int render_width, int render_height, double seconds) {
@@ -508,6 +510,28 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
             }
             paused_scroll_offset = 0;
             waterfall.push_rows(rows);
+            if (total_row_count == 0 || rows_presented < total_row_count) {
+                auto_paused_at_end = false;
+            }
+        }
+
+        bool pending_empty = false;
+        {
+            std::lock_guard<std::mutex> lock(pending_rows_mutex);
+            pending_empty = pending_rows.empty();
+        }
+        if (total_row_count > 0 && !auto_paused_at_end && rows_presented >= total_row_count && pending_empty) {
+            paused = true;
+            auto_paused_at_end = true;
+            paused_scroll_offset = 0;
+            redraw_paused_view();
+            std::fprintf(
+                stderr,
+                "[pixel_waterfall] auto paused at end: rows_presented=%lld total=%lld history=%zu\n",
+                static_cast<long long>(rows_presented),
+                static_cast<long long>(total_row_count),
+                row_history.size());
+            std::fflush(stderr);
         }
 
         return waterfall.render(renderer, render_width, render_height);
@@ -517,6 +541,9 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
             std::fflush(stderr);
             if (event.key.key == SDLK_SPACE) {
                 paused = !paused;
+                if (!paused) {
+                    auto_paused_at_end = false;
+                }
                 std::fprintf(stderr, "[pixel_waterfall] local pause state: %s\n", paused ? "paused" : "playing");
                 std::fflush(stderr);
                 paused_scroll_offset = 0;
@@ -533,6 +560,7 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
                 }
                 row_history.clear();
                 rows_presented = 0;
+                auto_paused_at_end = false;
                 paused_scroll_offset = 0;
                 stream_start_seconds = 0.0;
                 waterfall.clear();
