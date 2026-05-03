@@ -326,7 +326,6 @@ int run_hello_pixel_app() {
 int run_pixel_waterfall_demo_app() {
     AppConfig config;
     config.title = "Simplicity Engine - Pixel Waterfall";
-    config.ready_message = "SIMPLICITY_PIXEL_WATERFALL_READY";
     config.window_width = 960;
     config.window_height = 576;
 
@@ -351,6 +350,7 @@ int run_pixel_waterfall_demo_app() {
 int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, double rows_per_second) {
     AppConfig config;
     config.title = "Simplicity Engine - Pixel Waterfall";
+    config.ready_message = "SIMPLICITY_PIXEL_WATERFALL_READY";
     config.window_width = 960;
     config.window_height = 576;
 
