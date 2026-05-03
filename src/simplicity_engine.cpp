@@ -82,6 +82,8 @@ std::uint32_t pack_argb(const Rgba& color) {
 }
 
 void emit_control_message(const char* message) {
+    std::fprintf(stderr, "[pixel_waterfall] emit control: %s\n", message);
+    std::fflush(stderr);
     std::printf("%s\n", message);
     std::fflush(stdout);
 }
@@ -511,8 +513,12 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
         return waterfall.render(renderer, render_width, render_height);
     }, [&](const SDL_Event& event) {
         if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
+            std::fprintf(stderr, "[pixel_waterfall] key down: key=%u scancode=%u\n", event.key.key, event.key.scancode);
+            std::fflush(stderr);
             if (event.key.key == SDLK_SPACE) {
                 paused = !paused;
+                std::fprintf(stderr, "[pixel_waterfall] local pause state: %s\n", paused ? "paused" : "playing");
+                std::fflush(stderr);
                 paused_scroll_offset = 0;
                 if (paused) {
                     redraw_paused_view();
@@ -532,6 +538,8 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
             }
         } else if (event.type == SDL_EVENT_MOUSE_WHEEL && paused) {
             const auto scroll_rows = static_cast<std::int64_t>(std::lround(event.wheel.y * 24.0f));
+            std::fprintf(stderr, "[pixel_waterfall] paused wheel: y=%.2f rows=%lld\n", event.wheel.y, static_cast<long long>(scroll_rows));
+            std::fflush(stderr);
             paused_scroll_offset += scroll_rows;
             redraw_paused_view();
         }
