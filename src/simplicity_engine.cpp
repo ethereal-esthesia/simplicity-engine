@@ -463,7 +463,19 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
         }
 
         if (paused) {
-            return waterfall.render(renderer, render_width, render_height);
+            bool has_pending_rows = false;
+            {
+                std::lock_guard<std::mutex> lock(pending_rows_mutex);
+                has_pending_rows = !pending_rows.empty();
+            }
+            if (has_pending_rows) {
+                paused = false;
+                paused_scroll_offset = 0;
+                std::fprintf(stderr, "[pixel_waterfall] local pause state: playing (new rows arrived)\n");
+                std::fflush(stderr);
+            } else {
+                return waterfall.render(renderer, render_width, render_height);
+            }
         }
 
         const int max_rows_this_frame = row_interval_seconds == 0.0 ? 4096 : 8192;
@@ -521,6 +533,8 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
                 std::fflush(stderr);
                 paused_scroll_offset = 0;
                 if (paused) {
+                    std::lock_guard<std::mutex> lock(pending_rows_mutex);
+                    pending_rows.clear();
                     redraw_paused_view();
                 }
                 emit_control_message("SIMPLICITY_PIXEL_WATERFALL_TOGGLE_PAUSE");
