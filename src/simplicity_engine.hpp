@@ -25,8 +25,9 @@ struct AppConfig {
 };
 
 using RenderCallback = std::function<bool(SDL_Renderer&, int, int, double)>;
+using EventCallback = std::function<void(const SDL_Event&)>;
 
-int run_render_app(const AppConfig& config, const RenderCallback& render);
+int run_render_app(const AppConfig& config, const RenderCallback& render, const EventCallback& handle_event = {});
 std::vector<Rgba> make_hue_anchor_palette(double hue_degrees);
 
 class WaterfallSurface {
@@ -40,6 +41,7 @@ public:
     void push_row(const std::vector<std::uint8_t>& row);
     void push_rows(const std::vector<std::vector<std::uint8_t>>& rows);
     void push_demo_row(double seconds);
+    void clear();
     bool render(SDL_Renderer& renderer, int output_width, int output_height);
 
 private:

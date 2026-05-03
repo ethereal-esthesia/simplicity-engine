@@ -81,11 +81,19 @@ std::uint32_t pack_argb(const Rgba& color) {
            static_cast<std::uint32_t>(color.b);
 }
 
-bool poll_until_quit() {
+void emit_control_message(const char* message) {
+    std::printf("%s\n", message);
+    std::fflush(stdout);
+}
+
+bool poll_events(const EventCallback& handle_event) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_QUIT) {
             return false;
+        }
+        if (handle_event) {
+            handle_event(event);
         }
     }
     return true;
@@ -120,7 +128,7 @@ std::vector<Rgba> make_hue_anchor_palette(double hue_degrees) {
     return palette;
 }
 
-int run_render_app(const AppConfig& config, const RenderCallback& render) {
+int run_render_app(const AppConfig& config, const RenderCallback& render, const EventCallback& handle_event) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
@@ -168,7 +176,7 @@ int run_render_app(const AppConfig& config, const RenderCallback& render) {
     bool running = true;
     bool signaled_ready = false;
     while (running) {
-        running = poll_until_quit();
+        running = poll_events(handle_event);
 
         int render_width = 0;
         int render_height = 0;
@@ -271,6 +279,11 @@ void WaterfallSurface::push_rows(const std::vector<std::vector<std::uint8_t>>& r
     }
 
     rebuild_pixels();
+}
+
+void WaterfallSurface::clear() {
+    std::fill(intensities_.begin(), intensities_.end(), 0);
+    std::fill(pixels_.begin(), pixels_.end(), pack_argb(palette_[0]));
 }
 
 void WaterfallSurface::push_demo_row(double seconds) {
@@ -396,9 +409,34 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
     config.window_height = 576;
 
     const int row_width = std::max(1, width);
-    WaterfallSurface waterfall(row_width, std::max(1, height), hue_degrees);
+    const int row_count = std::max(1, height);
+    WaterfallSurface waterfall(row_width, row_count, hue_degrees);
     std::deque<std::vector<std::uint8_t>> pending_rows;
+    std::deque<std::vector<std::uint8_t>> row_history;
     std::mutex pending_rows_mutex;
+    bool paused = false;
+    std::int64_t paused_scroll_offset = 0;
+    const auto max_history_rows = static_cast<std::size_t>(std::max(row_count * 512, row_count));
+
+    auto redraw_paused_view = [&]() {
+        waterfall.clear();
+        if (row_history.empty()) {
+            return;
+        }
+
+        const auto history_size = static_cast<std::int64_t>(row_history.size());
+        const auto max_scroll_offset = std::max<std::int64_t>(0, history_size - 1);
+        paused_scroll_offset = std::min(std::max<std::int64_t>(paused_scroll_offset, 0), max_scroll_offset);
+        const auto end_index = std::max<std::int64_t>(0, history_size - paused_scroll_offset);
+        const auto start_index = std::max<std::int64_t>(0, end_index - row_count);
+
+        std::vector<std::vector<std::uint8_t>> rows;
+        rows.reserve(static_cast<std::size_t>(end_index - start_index));
+        for (std::int64_t index = start_index; index < end_index; ++index) {
+            rows.push_back(row_history[static_cast<std::size_t>(index)]);
+        }
+        waterfall.push_rows(rows);
+    };
 
     std::thread input_thread([&]() {
         while (std::cin.good()) {
@@ -420,6 +458,10 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
     const int result = run_render_app(config, [&](SDL_Renderer& renderer, int render_width, int render_height, double seconds) {
         if (stream_start_seconds == 0.0) {
             stream_start_seconds = seconds;
+        }
+
+        if (paused) {
+            return waterfall.render(renderer, render_width, render_height);
         }
 
         const int max_rows_this_frame = row_interval_seconds == 0.0 ? 4096 : 8192;
@@ -456,10 +498,43 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
 
         if (!rows.empty()) {
             rows_presented += static_cast<std::int64_t>(rows.size());
+            for (const auto& row : rows) {
+                row_history.push_back(row);
+            }
+            while (row_history.size() > max_history_rows) {
+                row_history.pop_front();
+            }
+            paused_scroll_offset = 0;
             waterfall.push_rows(rows);
         }
 
         return waterfall.render(renderer, render_width, render_height);
+    }, [&](const SDL_Event& event) {
+        if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
+            if (event.key.key == SDLK_SPACE) {
+                paused = !paused;
+                paused_scroll_offset = 0;
+                if (paused) {
+                    redraw_paused_view();
+                }
+                emit_control_message("SIMPLICITY_PIXEL_WATERFALL_TOGGLE_PAUSE");
+            } else if (event.key.key == SDLK_RETURN || event.key.key == SDLK_KP_ENTER) {
+                {
+                    std::lock_guard<std::mutex> lock(pending_rows_mutex);
+                    pending_rows.clear();
+                }
+                row_history.clear();
+                rows_presented = 0;
+                paused_scroll_offset = 0;
+                stream_start_seconds = 0.0;
+                waterfall.clear();
+                emit_control_message("SIMPLICITY_PIXEL_WATERFALL_RESET");
+            }
+        } else if (event.type == SDL_EVENT_MOUSE_WHEEL && paused) {
+            const auto scroll_rows = static_cast<std::int64_t>(std::lround(event.wheel.y * 24.0f));
+            paused_scroll_offset += scroll_rows;
+            redraw_paused_view();
+        }
     });
 
     if (input_thread.joinable()) {
