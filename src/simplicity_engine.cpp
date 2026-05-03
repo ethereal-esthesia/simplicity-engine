@@ -372,17 +372,36 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
         }
     });
 
-    double next_row_seconds = 0.0;
+    double stream_start_seconds = 0.0;
+    std::int64_t rows_presented = 0;
     const double row_interval_seconds = rows_per_second > 0.0 ? 1.0 / rows_per_second : 0.0;
 
     const int result = run_render_app(config, [&](SDL_Renderer& renderer, int render_width, int render_height, double seconds) {
-        if (next_row_seconds == 0.0) {
-            next_row_seconds = seconds;
+        if (stream_start_seconds == 0.0) {
+            stream_start_seconds = seconds;
         }
 
-        int rows_this_frame = 0;
         const int max_rows_this_frame = row_interval_seconds == 0.0 ? 4096 : 8192;
-        while (rows_this_frame < max_rows_this_frame && (row_interval_seconds == 0.0 || seconds >= next_row_seconds)) {
+        std::int64_t rows_to_present = max_rows_this_frame;
+        if (row_interval_seconds > 0.0) {
+            const double elapsed_seconds = std::max(0.0, seconds - stream_start_seconds);
+            const auto target_rows_presented = static_cast<std::int64_t>(std::floor(elapsed_seconds * rows_per_second)) + 1;
+            rows_to_present = std::max<std::int64_t>(0, target_rows_presented - rows_presented);
+        }
+
+        if (rows_to_present > max_rows_this_frame) {
+            const auto rows_to_skip = rows_to_present - max_rows_this_frame;
+            std::lock_guard<std::mutex> lock(pending_rows_mutex);
+            const auto skippable_rows = std::min<std::int64_t>(rows_to_skip, static_cast<std::int64_t>(pending_rows.size()));
+            for (std::int64_t index = 0; index < skippable_rows; ++index) {
+                pending_rows.pop_front();
+            }
+            rows_presented += skippable_rows;
+            rows_to_present -= skippable_rows;
+        }
+
+        std::int64_t rows_this_frame = 0;
+        while (rows_this_frame < rows_to_present) {
             std::vector<std::uint8_t> row;
             {
                 std::lock_guard<std::mutex> lock(pending_rows_mutex);
@@ -394,7 +413,7 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
             }
 
             waterfall.push_row(row);
-            next_row_seconds += row_interval_seconds;
+            ++rows_presented;
             ++rows_this_frame;
         }
 
