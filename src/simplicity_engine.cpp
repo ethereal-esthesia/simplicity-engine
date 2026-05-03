@@ -91,11 +91,11 @@ void emit_control_message(const char* message) {
 bool poll_events(const EventCallback& handle_event) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_EVENT_QUIT) {
-            return false;
-        }
         if (handle_event) {
             handle_event(event);
+        }
+        if (event.type == SDL_EVENT_QUIT) {
+            return false;
         }
     }
     return true;
@@ -536,6 +536,8 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
                 waterfall.clear();
                 emit_control_message("SIMPLICITY_PIXEL_WATERFALL_RESET");
             }
+        } else if (event.type == SDL_EVENT_QUIT) {
+            emit_control_message("SIMPLICITY_PIXEL_WATERFALL_QUIT");
         } else if (event.type == SDL_EVENT_MOUSE_WHEEL && paused) {
             const auto scroll_rows = static_cast<std::int64_t>(std::lround(event.wheel.y * 24.0f));
             std::fprintf(stderr, "[pixel_waterfall] paused wheel: y=%.2f rows=%lld\n", event.wheel.y, static_cast<long long>(scroll_rows));
