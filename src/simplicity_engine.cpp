@@ -259,17 +259,7 @@ bool WaterfallSurface::render(SDL_Renderer& renderer, int output_width, int outp
     SDL_SetRenderDrawColor(&renderer, 0, 0, 0, 255);
     SDL_RenderClear(&renderer);
 
-    const float output_aspect = output_height > 0 ? static_cast<float>(output_width) / static_cast<float>(output_height) : 1.0f;
-    const float surface_aspect = static_cast<float>(width_) / static_cast<float>(height_);
     SDL_FRect destination = {0, 0, static_cast<float>(output_width), static_cast<float>(output_height)};
-
-    if (output_aspect > surface_aspect) {
-        destination.w = destination.h * surface_aspect;
-        destination.x = (static_cast<float>(output_width) - destination.w) * 0.5f;
-    } else {
-        destination.h = destination.w / surface_aspect;
-        destination.y = (static_cast<float>(output_height) - destination.h) * 0.5f;
-    }
 
     if (!SDL_RenderTexture(&renderer, texture_, nullptr, &destination)) {
         std::fprintf(stderr, "SDL_RenderTexture failed: %s\n", SDL_GetError());
@@ -385,7 +375,7 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
         }
 
         int rows_this_frame = 0;
-        const int max_rows_this_frame = row_interval_seconds == 0.0 ? 4096 : 16;
+        const int max_rows_this_frame = row_interval_seconds == 0.0 ? 4096 : 8192;
         while (rows_this_frame < max_rows_this_frame && (row_interval_seconds == 0.0 || seconds >= next_row_seconds)) {
             std::vector<std::uint8_t> row;
             {

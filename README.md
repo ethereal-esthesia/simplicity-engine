@@ -153,6 +153,7 @@ The same executable can render caller-provided indexed rows from stdin:
 ```
 
 Use `--row-rate 0` for unpaced streams, such as dense one-row-per-sample analysis data.
+Use a positive `--row-rate` to pace row display in real time; for audio, pass the source sample rate to show one row per played sample.
 
 Useful variants:
 
