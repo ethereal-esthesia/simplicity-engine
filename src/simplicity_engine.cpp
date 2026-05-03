@@ -463,19 +463,7 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
         }
 
         if (paused) {
-            bool has_pending_rows = false;
-            {
-                std::lock_guard<std::mutex> lock(pending_rows_mutex);
-                has_pending_rows = !pending_rows.empty();
-            }
-            if (has_pending_rows) {
-                paused = false;
-                paused_scroll_offset = 0;
-                std::fprintf(stderr, "[pixel_waterfall] local pause state: playing (new rows arrived)\n");
-                std::fflush(stderr);
-            } else {
-                return waterfall.render(renderer, render_width, render_height);
-            }
+            return waterfall.render(renderer, render_width, render_height);
         }
 
         const int max_rows_this_frame = row_interval_seconds == 0.0 ? 4096 : 8192;
@@ -552,12 +540,20 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
             }
         } else if (event.type == SDL_EVENT_QUIT) {
             emit_control_message("SIMPLICITY_PIXEL_WATERFALL_QUIT");
-        } else if (event.type == SDL_EVENT_MOUSE_WHEEL && paused) {
+        } else if (event.type == SDL_EVENT_MOUSE_WHEEL) {
             const auto scroll_rows = static_cast<std::int64_t>(std::lround(event.wheel.y * 24.0f));
-            std::fprintf(stderr, "[pixel_waterfall] paused wheel: y=%.2f rows=%lld\n", event.wheel.y, static_cast<long long>(scroll_rows));
+            std::fprintf(
+                stderr,
+                "[pixel_waterfall] wheel: y=%.2f rows=%lld paused=%s history=%zu\n",
+                event.wheel.y,
+                static_cast<long long>(scroll_rows),
+                paused ? "true" : "false",
+                row_history.size());
             std::fflush(stderr);
-            paused_scroll_offset += scroll_rows;
-            redraw_paused_view();
+            if (paused) {
+                paused_scroll_offset += scroll_rows;
+                redraw_paused_view();
+            }
         }
     });
 
