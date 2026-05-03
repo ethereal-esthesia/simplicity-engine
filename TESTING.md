@@ -34,11 +34,11 @@ Debug:
 ./scripts/run.sh
 ```
 
-Waterfall window:
+Pixel waterfall:
 
 ```bash
-cmake --build --preset debug --target waterfall_window
-./build/debug/waterfall_window
+cmake --build --preset debug --target pixel_waterfall
+./build/debug/pixel_waterfall
 ```
 
 Release:

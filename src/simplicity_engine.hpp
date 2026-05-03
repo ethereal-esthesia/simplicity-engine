@@ -53,6 +53,7 @@ private:
 };
 
 int run_hello_pixel_app();
-int run_waterfall_demo_app();
+int run_pixel_waterfall_demo_app();
+int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, double rows_per_second);
 
 } // namespace simplicity

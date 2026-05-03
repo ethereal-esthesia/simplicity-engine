@@ -138,12 +138,18 @@ Demo run (default debug `hello_pixel` build):
 ./scripts/run.sh
 ```
 
-Waterfall window demo:
+Pixel waterfall demo:
 
 ```bash
 cmake --preset debug
-cmake --build --preset debug --target waterfall_window
-./build/debug/waterfall_window
+cmake --build --preset debug --target pixel_waterfall
+./build/debug/pixel_waterfall
+```
+
+The same executable can render caller-provided indexed rows from stdin:
+
+```bash
+./build/debug/pixel_waterfall --stdin-rows 320 192 --hue 210 --row-rate 90
 ```
 
 Useful variants:

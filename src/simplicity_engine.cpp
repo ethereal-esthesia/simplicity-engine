@@ -3,7 +3,11 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <deque>
+#include <iostream>
+#include <mutex>
 #include <stdexcept>
+#include <thread>
 
 namespace simplicity {
 namespace {
@@ -314,9 +318,9 @@ int run_hello_pixel_app() {
     });
 }
 
-int run_waterfall_demo_app() {
+int run_pixel_waterfall_demo_app() {
     AppConfig config;
-    config.title = "Simplicity Engine - FFT Waterfall";
+    config.title = "Simplicity Engine - Pixel Waterfall";
     config.window_width = 960;
     config.window_height = 576;
 
@@ -336,6 +340,64 @@ int run_waterfall_demo_app() {
         }
         return waterfall.render(renderer, render_width, render_height);
     });
+}
+
+int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, double rows_per_second) {
+    AppConfig config;
+    config.title = "Simplicity Engine - Pixel Waterfall";
+    config.window_width = 960;
+    config.window_height = 576;
+
+    const int row_width = std::max(1, width);
+    WaterfallSurface waterfall(row_width, std::max(1, height), hue_degrees);
+    std::deque<std::vector<std::uint8_t>> pending_rows;
+    std::mutex pending_rows_mutex;
+
+    std::thread input_thread([&]() {
+        while (std::cin.good()) {
+            std::vector<std::uint8_t> row(static_cast<std::size_t>(row_width), 0);
+            std::cin.read(reinterpret_cast<char*>(row.data()), static_cast<std::streamsize>(row.size()));
+            if (std::cin.gcount() != static_cast<std::streamsize>(row.size())) {
+                break;
+            }
+
+            std::lock_guard<std::mutex> lock(pending_rows_mutex);
+            pending_rows.push_back(std::move(row));
+        }
+    });
+
+    double next_row_seconds = 0.0;
+    const double row_interval_seconds = rows_per_second > 0.0 ? 1.0 / rows_per_second : 0.0;
+
+    const int result = run_render_app(config, [&](SDL_Renderer& renderer, int render_width, int render_height, double seconds) {
+        if (next_row_seconds == 0.0) {
+            next_row_seconds = seconds;
+        }
+
+        int rows_this_frame = 0;
+        while (rows_this_frame < 16 && (row_interval_seconds == 0.0 || seconds >= next_row_seconds)) {
+            std::vector<std::uint8_t> row;
+            {
+                std::lock_guard<std::mutex> lock(pending_rows_mutex);
+                if (pending_rows.empty()) {
+                    break;
+                }
+                row = std::move(pending_rows.front());
+                pending_rows.pop_front();
+            }
+
+            waterfall.push_row(row);
+            next_row_seconds += row_interval_seconds;
+            ++rows_this_frame;
+        }
+
+        return waterfall.render(renderer, render_width, render_height);
+    });
+
+    if (input_thread.joinable()) {
+        input_thread.join();
+    }
+    return result;
 }
 
 } // namespace simplicity
