@@ -161,12 +161,12 @@ int run_render_app(const AppConfig& config, const RenderCallback& render) {
         return 1;
     }
 
-    if (!config.ready_message.empty()) {
-        std::printf("%s\n", config.ready_message.c_str());
-        std::fflush(stdout);
+    if (!SDL_SetRenderVSync(renderer, 1)) {
+        std::fprintf(stderr, "SDL_SetRenderVSync failed: %s\n", SDL_GetError());
     }
 
     bool running = true;
+    bool signaled_ready = false;
     while (running) {
         running = poll_until_quit();
 
@@ -183,6 +183,12 @@ int run_render_app(const AppConfig& config, const RenderCallback& render) {
         }
 
         SDL_RenderPresent(renderer);
+
+        if (!signaled_ready && !config.ready_message.empty()) {
+            std::printf("%s\n", config.ready_message.c_str());
+            std::fflush(stdout);
+            signaled_ready = true;
+        }
     }
 
     SDL_DestroyRenderer(renderer);
