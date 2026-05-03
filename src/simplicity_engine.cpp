@@ -232,6 +232,41 @@ void WaterfallSurface::push_row(const std::vector<std::uint8_t>& row) {
     }
 }
 
+void WaterfallSurface::push_rows(const std::vector<std::vector<std::uint8_t>>& rows) {
+    if (rows.empty()) {
+        return;
+    }
+
+    const auto row_width = static_cast<std::size_t>(width_);
+    const auto row_count = static_cast<std::size_t>(height_);
+    for (const auto& row : rows) {
+        if (row.size() != row_width) {
+            throw std::invalid_argument("waterfall row width does not match surface width");
+        }
+    }
+
+    const auto rows_to_copy = std::min(rows.size(), row_count);
+    if (rows_to_copy < row_count) {
+        const auto shift_width = rows_to_copy * row_width;
+        std::move(
+            intensities_.begin() + static_cast<std::ptrdiff_t>(shift_width),
+            intensities_.end(),
+            intensities_.begin());
+    }
+
+    const auto source_offset = rows.size() - rows_to_copy;
+    const auto destination_offset = (row_count - rows_to_copy) * row_width;
+    for (std::size_t row_index = 0; row_index < rows_to_copy; ++row_index) {
+        const auto& row = rows[source_offset + row_index];
+        std::copy(
+            row.begin(),
+            row.end(),
+            intensities_.begin() + static_cast<std::ptrdiff_t>(destination_offset + (row_index * row_width)));
+    }
+
+    rebuild_pixels();
+}
+
 void WaterfallSurface::push_demo_row(double seconds) {
     std::vector<std::uint8_t> row(static_cast<std::size_t>(width_), 0);
     const double low_peak = 0.18 + 0.06 * std::sin(seconds * 1.3);
@@ -400,21 +435,22 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
             rows_to_present -= skippable_rows;
         }
 
-        std::int64_t rows_this_frame = 0;
-        while (rows_this_frame < rows_to_present) {
-            std::vector<std::uint8_t> row;
+        std::vector<std::vector<std::uint8_t>> rows;
+        rows.reserve(static_cast<std::size_t>(std::min<std::int64_t>(rows_to_present, max_rows_this_frame)));
+        while (static_cast<std::int64_t>(rows.size()) < rows_to_present) {
             {
                 std::lock_guard<std::mutex> lock(pending_rows_mutex);
                 if (pending_rows.empty()) {
                     break;
                 }
-                row = std::move(pending_rows.front());
+                rows.push_back(std::move(pending_rows.front()));
                 pending_rows.pop_front();
             }
+        }
 
-            waterfall.push_row(row);
-            ++rows_presented;
-            ++rows_this_frame;
+        if (!rows.empty()) {
+            rows_presented += static_cast<std::int64_t>(rows.size());
+            waterfall.push_rows(rows);
         }
 
         return waterfall.render(renderer, render_width, render_height);

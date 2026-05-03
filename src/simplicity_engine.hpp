@@ -38,6 +38,7 @@ public:
     WaterfallSurface& operator=(const WaterfallSurface&) = delete;
 
     void push_row(const std::vector<std::uint8_t>& row);
+    void push_rows(const std::vector<std::vector<std::uint8_t>>& rows);
     void push_demo_row(double seconds);
     bool render(SDL_Renderer& renderer, int output_width, int output_height);
 
