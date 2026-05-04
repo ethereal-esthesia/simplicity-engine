@@ -54,7 +54,7 @@ jobs:
       - name: Package Linux archive
         env:
           ARCH_LABEL: ${{ matrix.arch }}
-        run: ./tools/package_linux.sh
+        run: ./scripts/package_linux.sh
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v6
@@ -83,7 +83,7 @@ jobs:
 
       - name: Package Windows ZIP
         shell: pwsh
-        run: ./tools/package_windows_zip.ps1 -ArchLabel "${{ matrix.arch }}"
+        run: ./scripts/package_windows_zip.ps1 -ArchLabel "${{ matrix.arch }}"
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v6
@@ -114,7 +114,7 @@ jobs:
         env:
           ARCH_LABEL: ${{ matrix.arch }}
           MACOS_CMAKE_ARCH: ${{ matrix.cmake_arch }}
-        run: ./tools/package_macos.sh
+        run: ./scripts/package_macos.sh
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v6

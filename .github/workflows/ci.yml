@@ -54,7 +54,7 @@ jobs:
 
       - name: Smoke Tests (Debug)
         shell: bash
-        run: ./tools/smoke.sh debug
+        run: ./scripts/smoke.sh debug
 
       - name: Configure (Release)
         run: cmake --preset release
@@ -69,4 +69,4 @@ jobs:
       - name: Smoke Tests (Release, non-Linux)
         if: runner.os != 'Linux'
         shell: bash
-        run: ./tools/smoke.sh release
+        run: ./scripts/smoke.sh release
