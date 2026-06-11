@@ -5,9 +5,9 @@ if(POLICY CMP0135)
 endif()
 
 if(APPLE)
-  project(simplicity_engine C CXX)
+  project(simplicity_engine LANGUAGES C CXX OBJCXX)
 else()
-  project(simplicity_engine C CXX)
+  project(simplicity_engine LANGUAGES C CXX)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -99,7 +99,6 @@ if(NOT ANDROID)
 endif()
 
 if(APPLE AND NOT ANDROID)
-  enable_language(OBJCXX)
   add_executable(macos_bookmark_probe probes/macos/bookmark_probe.mm)
   target_compile_options(macos_bookmark_probe PRIVATE -fobjc-arc)
   target_compile_definitions(
