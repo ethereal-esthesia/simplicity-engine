@@ -5,7 +5,7 @@ if(POLICY CMP0135)
 endif()
 
 if(APPLE)
-  project(simplicity_engine C CXX OBJC OBJCXX)
+  project(simplicity_engine C CXX)
 else()
   project(simplicity_engine C CXX)
 endif()
