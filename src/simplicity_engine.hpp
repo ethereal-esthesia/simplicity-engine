@@ -27,8 +27,16 @@ struct AppConfig {
 using RenderCallback = std::function<bool(SDL_Renderer&, int, int, double)>;
 using EventCallback = std::function<void(const SDL_Event&)>;
 
+enum class PixelWaterfallInputAction {
+    none,
+    pause_resume,
+    reset
+};
+
 int run_render_app(const AppConfig& config, const RenderCallback& render, const EventCallback& handle_event = {});
 std::vector<Rgba> make_hue_anchor_palette(double hue_degrees);
+PixelWaterfallInputAction pixel_waterfall_input_action(const SDL_Event& event);
+std::int64_t pixel_waterfall_clamped_scroll_offset(std::int64_t history_rows, std::int64_t visible_rows, std::int64_t requested_scroll_rows);
 
 class WaterfallSurface {
 public:

@@ -101,7 +101,90 @@ bool poll_events(const EventCallback& handle_event) {
     return true;
 }
 
+class PixelWaterfallRowBuffer {
+public:
+    PixelWaterfallRowBuffer(int row_width, int visible_rows)
+        : row_width_(std::max(1, row_width)),
+          visible_rows_(std::max(1, visible_rows)),
+          max_rows_(static_cast<std::size_t>(std::max(visible_rows_ * 512, visible_rows_))) {}
+
+    void append(const std::vector<std::uint8_t>& row) {
+        if (row.size() != static_cast<std::size_t>(row_width_)) {
+            throw std::invalid_argument("waterfall row width does not match buffer width");
+        }
+        rows_.push_back(row);
+        while (rows_.size() > max_rows_) {
+            rows_.pop_front();
+        }
+    }
+
+    void clear() {
+        rows_.clear();
+    }
+
+    std::size_t size() const {
+        return rows_.size();
+    }
+
+    std::int64_t clamped_scroll(std::int64_t scroll_rows) const {
+        return pixel_waterfall_clamped_scroll_offset(
+            static_cast<std::int64_t>(rows_.size()),
+            static_cast<std::int64_t>(visible_rows_),
+            scroll_rows);
+    }
+
+    std::int64_t render_to(WaterfallSurface& surface, std::int64_t scroll_rows) const {
+        surface.clear();
+        if (rows_.empty()) {
+            return 0;
+        }
+
+        const auto history_size = static_cast<std::int64_t>(rows_.size());
+        const auto clamped_scroll = this->clamped_scroll(scroll_rows);
+        const auto end_index = history_size - clamped_scroll;
+        const auto start_index = std::max<std::int64_t>(0, end_index - visible_rows_);
+
+        std::vector<std::vector<std::uint8_t>> visible_rows;
+        visible_rows.reserve(static_cast<std::size_t>(end_index - start_index));
+        for (std::int64_t index = start_index; index < end_index; ++index) {
+            visible_rows.push_back(rows_[static_cast<std::size_t>(index)]);
+        }
+        surface.push_rows(visible_rows);
+        return clamped_scroll;
+    }
+
+private:
+    int row_width_ = 1;
+    int visible_rows_ = 1;
+    std::size_t max_rows_ = 1;
+    std::deque<std::vector<std::uint8_t>> rows_;
+};
+
 } // namespace
+
+PixelWaterfallInputAction pixel_waterfall_input_action(const SDL_Event& event) {
+    if (event.type != SDL_EVENT_KEY_DOWN || event.key.repeat) {
+        return PixelWaterfallInputAction::none;
+    }
+
+    if (event.key.key == SDLK_SPACE) {
+        return PixelWaterfallInputAction::pause_resume;
+    }
+    if (event.key.key == SDLK_RETURN || event.key.key == SDLK_KP_ENTER) {
+        return PixelWaterfallInputAction::reset;
+    }
+    return PixelWaterfallInputAction::none;
+}
+
+std::int64_t pixel_waterfall_clamped_scroll_offset(
+    std::int64_t history_rows,
+    std::int64_t visible_rows,
+    std::int64_t requested_scroll_rows) {
+    const auto safe_history_rows = std::max<std::int64_t>(0, history_rows);
+    const auto safe_visible_rows = std::max<std::int64_t>(1, visible_rows);
+    const auto max_scroll = std::max<std::int64_t>(0, safe_history_rows - safe_visible_rows);
+    return std::min(std::max<std::int64_t>(requested_scroll_rows, 0), max_scroll);
+}
 
 std::vector<Rgba> make_hue_anchor_palette(double hue_degrees) {
     const Rgba anchor = hue_anchor_color(hue_degrees);
@@ -415,30 +498,13 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
     const std::int64_t total_row_count = std::max(0, total_rows);
     WaterfallSurface waterfall(row_width, row_count, hue_degrees);
     std::deque<std::vector<std::uint8_t>> pending_rows;
-    std::deque<std::vector<std::uint8_t>> row_history;
+    PixelWaterfallRowBuffer row_buffer(row_width, row_count);
     std::mutex pending_rows_mutex;
     bool paused = false;
     std::int64_t paused_scroll_offset = 0;
-    const auto max_history_rows = static_cast<std::size_t>(std::max(row_count * 512, row_count));
 
     auto redraw_paused_view = [&]() {
-        waterfall.clear();
-        if (row_history.empty()) {
-            return;
-        }
-
-        const auto history_size = static_cast<std::int64_t>(row_history.size());
-        const auto max_scroll_offset = std::max<std::int64_t>(0, history_size - 1);
-        paused_scroll_offset = std::min(std::max<std::int64_t>(paused_scroll_offset, 0), max_scroll_offset);
-        const auto end_index = std::max<std::int64_t>(0, history_size - paused_scroll_offset);
-        const auto start_index = std::max<std::int64_t>(0, end_index - row_count);
-
-        std::vector<std::vector<std::uint8_t>> rows;
-        rows.reserve(static_cast<std::size_t>(end_index - start_index));
-        for (std::int64_t index = start_index; index < end_index; ++index) {
-            rows.push_back(row_history[static_cast<std::size_t>(index)]);
-        }
-        waterfall.push_rows(rows);
+        paused_scroll_offset = row_buffer.render_to(waterfall, paused_scroll_offset);
     };
 
     std::thread input_thread([&]() {
@@ -503,10 +569,7 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
         if (!rows.empty()) {
             rows_presented += static_cast<std::int64_t>(rows.size());
             for (const auto& row : rows) {
-                row_history.push_back(row);
-            }
-            while (row_history.size() > max_history_rows) {
-                row_history.pop_front();
+                row_buffer.append(row);
             }
             paused_scroll_offset = 0;
             waterfall.push_rows(rows);
@@ -530,16 +593,22 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
                 "[pixel_waterfall] auto paused at end: rows_presented=%lld total=%lld history=%zu\n",
                 static_cast<long long>(rows_presented),
                 static_cast<long long>(total_row_count),
-                row_history.size());
+                row_buffer.size());
             std::fflush(stderr);
         }
 
         return waterfall.render(renderer, render_width, render_height);
     }, [&](const SDL_Event& event) {
-        if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
-            std::fprintf(stderr, "[pixel_waterfall] key down: key=%u scancode=%u\n", event.key.key, event.key.scancode);
+        if (event.type == SDL_EVENT_KEY_DOWN) {
+            std::fprintf(
+                stderr,
+                "[pixel_waterfall] key down: key=%u scancode=%u repeat=%s\n",
+                event.key.key,
+                event.key.scancode,
+                event.key.repeat ? "true" : "false");
             std::fflush(stderr);
-            if (event.key.key == SDLK_SPACE) {
+            const auto action = pixel_waterfall_input_action(event);
+            if (action == PixelWaterfallInputAction::pause_resume) {
                 paused = !paused;
                 if (!paused) {
                     auto_paused_at_end = false;
@@ -548,17 +617,15 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
                 std::fflush(stderr);
                 paused_scroll_offset = 0;
                 if (paused) {
-                    std::lock_guard<std::mutex> lock(pending_rows_mutex);
-                    pending_rows.clear();
                     redraw_paused_view();
                 }
-                emit_control_message("SIMPLICITY_PIXEL_WATERFALL_TOGGLE_PAUSE");
-            } else if (event.key.key == SDLK_RETURN || event.key.key == SDLK_KP_ENTER) {
+                emit_control_message(paused ? "SIMPLICITY_PIXEL_WATERFALL_PAUSE" : "SIMPLICITY_PIXEL_WATERFALL_RESUME");
+            } else if (action == PixelWaterfallInputAction::reset) {
                 {
                     std::lock_guard<std::mutex> lock(pending_rows_mutex);
                     pending_rows.clear();
                 }
-                row_history.clear();
+                row_buffer.clear();
                 rows_presented = 0;
                 auto_paused_at_end = false;
                 paused_scroll_offset = 0;
@@ -576,7 +643,7 @@ int run_pixel_waterfall_stream_app(int width, int height, double hue_degrees, do
                 event.wheel.y,
                 static_cast<long long>(scroll_rows),
                 paused ? "true" : "false",
-                row_history.size());
+                row_buffer.size());
             std::fflush(stderr);
             if (paused) {
                 paused_scroll_offset += scroll_rows;
