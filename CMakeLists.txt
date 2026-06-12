@@ -4,7 +4,11 @@ if(POLICY CMP0135)
   cmake_policy(SET CMP0135 NEW)
 endif()
 
-project(simplicity_engine C CXX)
+if(APPLE)
+  project(simplicity_engine C CXX OBJCXX)
+else()
+  project(simplicity_engine C CXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
