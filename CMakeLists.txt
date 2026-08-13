@@ -6,6 +6,10 @@ endif()
 
 project(simplicity_engine C CXX)
 
+if(APPLE AND NOT ANDROID)
+  enable_language(OBJCXX)
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -78,7 +82,6 @@ if(NOT ANDROID)
 endif()
 
 if(APPLE AND NOT ANDROID)
-  enable_language(OBJCXX)
   add_executable(macos_bookmark_probe probes/macos/bookmark_probe.mm)
   target_compile_options(macos_bookmark_probe PRIVATE -fobjc-arc)
   target_compile_definitions(
