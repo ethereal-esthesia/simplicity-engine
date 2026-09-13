@@ -2,6 +2,27 @@
 
 Simplicity Engine aims to reduce the complexity of getting high quality, fluid motion graphics working with a low learning curve.
 
+## macOS Matte Overlay
+
+A click-through menu-bar utility adds translucent grey tint and paper-like grain across all connected displays, without taking keyboard focus. Grain remains visible at 0% tint.
+
+Build and launch with Apple's command-line developer tools installed:
+
+```sh
+bash tools/matte-overlay/build.sh
+open "build/Matte Overlay.app"
+```
+
+Open **◐** in the menu bar:
+
+- **Turn Overlay Off / On** controls visibility; the action has no checkmark.
+- **Full-resolution grain** switches between display backing resolution (including Retina scaling) and the original 960 × 540 texture.
+- **Random (animated grain)** refreshes at 30 fps using a shift/XOR-only RNG that consumes every output bit.
+- **Grey tint** adjusts from 0–65%. Tint labels and the slider are greyed out only while the overlay is off.
+- **Quit Matte Overlay** removes the overlay and exits.
+
+The compact menu has no redundant heading. Settings persist between launches. Grain uses brightness values 192–255 at 12% opacity, independently of tint. See [Matte Overlay documentation](tools/matte-overlay/README.md) for implementation details and verification commands.
+
 ## Hello Pixel (SDL)
 
 This repo currently includes a minimal SDL app that opens a window and renders a small visible mark at the center.
