@@ -4,6 +4,7 @@ plugins {
 
 android {
     namespace "dev.simplicityengine.hellopixel"
+    buildFeatures { buildConfig true }
     compileSdkVersion 36
     ndkVersion "27.2.12479018"
 
@@ -16,7 +17,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments "-DANDROID_PLATFORM=android-21", "-DANDROID_STL=c++_static"
+                arguments "-DANDROID_PLATFORM=android-21", "-DANDROID_STL=c++_static", "-DSIMPLICITY_MENU_DEMO=" + (project.hasProperty("menuDemo") ? "ON" : "OFF")
                 abiFilters 'arm64-v8a'
             }
         }
