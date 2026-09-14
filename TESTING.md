@@ -82,3 +82,9 @@ Expected artifacts:
 - `build/linux-release/hello_pixel`
 - `build/windows-debug/hello_pixel.exe`
 - `build/windows-release/hello_pixel.exe`
+
+## Common menus and developer setup
+
+See [Menu Studio validation](docs/menu.md) and [developer setup](docs/developer-setup.md).
+Run `python3 tests/test_dev_setup.py` for setup orchestration regression checks.
+Run `./scripts/menu_demo.sh test host` for the desktop demo and native menu test.

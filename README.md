@@ -37,73 +37,24 @@ Project reference docs live in `docs/`.
 Top-level setup guides:
 - Mobile testing setup: `MOBILE-TESTING-SETUP.md`
 
-VM direction:
-- Prefer open VM tooling such as QEMU/libvirt or UTM for cross-platform automation.
-- Keep Parallels as an optional paid alternative, not the default plan.
-
-Script surface:
+Developer setup uses one public command:
 
 ```bash
-./scripts/setup_target.sh <target>
-./scripts/build_target.sh <target>
-./scripts/run_target.sh <target>
-./scripts/package_target.sh <target>
+./scripts/dev-setup.sh --target macos --check
+./scripts/dev-setup.sh --target macos
+./scripts/dev-setup.sh --target macos --vm --storage "/Volumes/Storage/VM Images/Simplicity"
+./scripts/dev-setup.sh --target linux --vm
+./scripts/dev-setup.sh --target windows --vm
+./scripts/dev-setup.sh --target android
+./scripts/dev-setup.sh --target ios
 ```
 
-Those are the stable top-level entrypoints we want people to grow into. Underneath them, target-specific wrappers such as `scripts/run_ios_ipad.sh` and `scripts/setup_utm.sh` still exist and stay usable while the unified backends fill in.
-
-UTM bootstrap:
-
-```bash
-./scripts/setup_utm.sh
-```
-
-That no-flag path is the safe starting point. It:
-
-- installs or upgrades UTM on macOS through Homebrew
-- prepares the ignored guest-media cache under `local/utm/media`
-- stops before starting any guest OS media flow
-- prints the next-step commands for each platform pipeline
-
-Platform pipelines:
-
-```bash
-./scripts/setup_utm.sh --windows
-./scripts/setup_utm.sh --linux
-./scripts/setup_utm.sh --macos
-./scripts/setup_utm.sh --all
-```
-
-What each one does:
-
-- `--windows`
-  - prepares `local/utm/media/windows`
-  - opens Microsoft's official Windows 11 Arm64 download page by default
-  - writes a reminder file in that folder because Microsoft's download flow is interactive
-- `--linux`
-  - downloads the official Ubuntu ARM64 desktop ISO into `local/utm/media/linux`
-- `--macos`
-  - tries to fetch the latest supported macOS restore image from Apple's virtualization service
-  - if that fetch fails, it leaves a reminder file and points you at UTM's built-in macOS guest flow
-- `--all`
-  - runs the Windows, Linux, and macOS guest-media setup paths in sequence
-
-If you already have local guest media, pass it explicitly:
-
-```bash
-./scripts/setup_utm.sh --windows --iso /path/to/windows.iso
-./scripts/setup_utm.sh --linux --iso /path/to/linux.iso
-./scripts/setup_utm.sh --macos --iso /path/to/restore.ipsw
-```
-
-Useful options:
-
-- `--download-dir <dir>` stores media somewhere other than `local/utm/media`
-- `--force` re-downloads or replaces staged media
-- `--skip-install-utm` skips the Homebrew UTM install/upgrade step
-- `--no-open` avoids opening browser pages for the interactive Windows or fallback macOS paths
-
-The script is idempotent within a run: shared host setup only happens once, and later pipeline steps will report when that setup was already handled.
+On Windows, use `./scripts/dev-setup.ps1`. Setup and testing are separate:
+`./scripts/menu_demo.sh test host` builds and tests Menu Studio.
+See [developer setup](docs/developer-setup.md) for storage, reuse, installation
+boundaries, and exit codes, and [common menus](docs/menu.md) for the API and test matrix.
+UTM is the supported desktop VM frontend. Parallels integration and the old setup
+aliases have been removed; existing VM files are not modified or removed.
 
 ## Build Types
 

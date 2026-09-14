@@ -9,3 +9,6 @@ android/app/.cxx/
 android/app/build/
 android/build/
 android/local.properties
+
+__pycache__/
+*.pyc

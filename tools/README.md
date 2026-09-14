@@ -17,7 +17,6 @@ Utility scripts for local development, packaging, and release.
 
 ## Remote And VM Helpers
 
-- `parallels/`: Optional paid helpers for Linux and Windows guest builds through Parallels. The long-term default direction is backend-neutral remote tooling with open VM stacks such as QEMU/libvirt or UTM.
 
 ## Packaging
 

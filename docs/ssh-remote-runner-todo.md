@@ -3,13 +3,11 @@
 ## Goal
 Use SSH as the stable local remote-execution layer for emulator and machine targets, instead of relying on emulator-specific guest command APIs.
 
-Working idea: keep QEMU, libvirt, UTM, and physical machines responsible for lifecycle/display, while SSH handles build, test, sync, run, and logs. Parallels can stay as an optional paid fallback, but it should not define the long-term remote model.
 
 ## Core Model
 - [ ] Treat every remote target as `user@host` plus platform metadata.
 - [ ] Support Windows and APT-based Linux first.
 - [ ] Keep local macOS builds on `scripts/run.sh`.
-- [ ] Keep `scripts/parallels/run-windows.sh` as an optional paid fallback/bootstrap path, not the long-term remote abstraction.
 - [ ] Prefer open-source lifecycle tooling first: libvirt where available, direct QEMU where needed, UTM as a Mac-side convenience layer.
 - [ ] Make the remote runner emulator-agnostic: no required `prlctl`, `virsh`, QEMU, or UTM command for normal build/run.
 - [ ] Store local per-machine settings under `local/remote/`, ignored by git.
@@ -35,7 +33,7 @@ Working idea: keep QEMU, libvirt, UTM, and physical machines responsible for lif
 - [ ] Include `REMOTE_REPO`, using the remote platform path style.
 - [ ] Include `REMOTE_PRESET`, defaulting to `debug` for Windows and `linux-debug` for Linux if needed.
 - [ ] Include `REMOTE_TARGET`, defaulting to `hello_pixel`.
-- [ ] Include optional `REMOTE_DISPLAY_MODE`, for notes only at first: `qemu`, `utm`, `parallels`, `rdp`, `vnc`, `spice`, or `manual`.
+- [ ] Include optional `REMOTE_DISPLAY_MODE`, for notes only at first: `qemu`, `utm`, `rdp`, `vnc`, `spice`, or `manual`.
 
 ## Runner Shape
 - [ ] Add `scripts/remote/run.sh`.
@@ -66,7 +64,6 @@ Working idea: keep QEMU, libvirt, UTM, and physical machines responsible for lif
 
 ## Windows Remote Build
 - [ ] Keep the Windows build logic in PowerShell on the guest, but invoke it over SSH.
-- [ ] Reuse or adapt `scripts/parallels/guest-build-run.ps1`.
 - [ ] Keep `VsDevCmd.bat` probing and MSVC target detection.
 - [ ] Keep stale MSVC CMake cache detection.
 - [ ] Launch GUI apps through a detached Windows process when `--launch` is used.
@@ -74,7 +71,6 @@ Working idea: keep QEMU, libvirt, UTM, and physical machines responsible for lif
 - [ ] If SSH cannot launch visible GUI apps directly, document the display launch path separately.
 
 ## Linux Remote Build
-- [ ] Reuse or adapt `scripts/parallels/linux/guest-build-run.sh`.
 - [ ] Verify display behavior under common local VM setups.
 - [ ] Support `DISPLAY` forwarding only as an explicit opt-in, not the default.
 - [ ] Prefer launching on the guest's existing display when available.
@@ -83,7 +79,6 @@ Working idea: keep QEMU, libvirt, UTM, and physical machines responsible for lif
 - [ ] Keep display separate from execution.
 - [ ] Treat touch-capable hardware as separate from VM execution. VMs can cover build and smoke validation, but real touch hardware is still required for touchscreen signoff.
 - [ ] Prefer open display paths first: QEMU/libvirt plus VNC/SPICE/RDP, or UTM as a local Mac frontend.
-- [ ] Keep Parallels Coherence/shared app windows documented only as an optional paid alternative.
 - [ ] Do not promise that SSH alone shows a remote GUI on the Mac desktop.
 - [ ] Add clear troubleshooting notes for "build succeeded but no window appeared."
 
@@ -105,13 +100,12 @@ Working idea: keep QEMU, libvirt, UTM, and physical machines responsible for lif
 - [ ] Test remote build with tests.
 - [ ] Test remote launch behavior separately from build success.
 - [ ] Confirm the runner works with at least one QEMU/libvirt or UTM-backed target before making it the primary documented remote path.
-- [ ] Confirm the runner also works with a Parallels VM as an optional paid alternative.
 
 ## Open Questions
-- [ ] Should the remote runner live under `scripts/remote/` or replace the Parallels runner entry point later?
-- [ ] Should Windows SSH setup be part of `scripts/parallels/setup.sh` or move into a backend-neutral remote setup script?
 - [ ] Should remote configs be shell `.env` files, JSON, or TOML?
-- [ ] Should the guest build scripts move out of `scripts/parallels/` once SSH is the primary remote abstraction?
 - [ ] How much VM lifecycle should the remote runner attempt, if any?
 - [ ] Do we want a named target registry so commands can use `--target-machine windows-arm` instead of a config path?
 - [ ] Do we want to standardize on libvirt XML / `virsh` metadata as the first-class open VM description format?
+
+
+Current baseline: `dev-setup.sh --vm --guest ... --guest-repo ...` provisions an existing Unix checkout over SSH. See [setup](developer-setup.md).
