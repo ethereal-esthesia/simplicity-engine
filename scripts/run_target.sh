@@ -14,10 +14,10 @@ Usage: ./scripts/run_target.sh <target> [options]
 Run a supported target through one public entrypoint.
 
 Targets wired now:
-  host, macos, ios-phone, ios-tablet, android-phone, android-tablet
+  host, macos, ios-phone, android-phone
 
 Targets planned next:
-  windows-x64, windows-arm64, windows-tablet, linux-x64, linux-arm64
+  windows-x64, windows-arm64, linux-x64, linux-arm64
 EOF
 }
 
@@ -82,16 +82,10 @@ case "$TARGET" in
   ios-phone|ios-iphone)
     exec "${SCRIPT_DIR}/run_ios_iphone.sh" "${PASS_THROUGH[@]}"
     ;;
-  ios-tablet|ios-ipad|ios)
-    exec "${SCRIPT_DIR}/run_ios_ipad.sh" "${PASS_THROUGH[@]}"
-    ;;
   android-phone)
     exec "${SCRIPT_DIR}/run_android_phone.sh" "${PASS_THROUGH[@]}"
     ;;
-  android-tablet|android)
-    exec "${SCRIPT_DIR}/run_android_tablet.sh" "${PASS_THROUGH[@]}"
-    ;;
-  windows-x64|windows-arm64|windows-tablet|linux-x64|linux-arm64)
+  windows-x64|windows-arm64|linux-x64|linux-arm64)
     echo "Run routing for ${TARGET} is still a stub." >&2
     echo "Use the VM-specific scripts directly for now while we finish the unified backend." >&2
     exit 1

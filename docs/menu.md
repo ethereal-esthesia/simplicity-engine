@@ -23,8 +23,8 @@ guide toggling and disabled export demonstrate native state handling.
 | macOS host | Five CTest tests, native menu construction/state/dispatch; manual menu interaction | Fresh developer installation |
 | Fedora ARM | Five CTest tests and native GTK test under Xvfb | Fresh UTM installation; prior guest was Parallels |
 | Windows x64 | Cross-compilation of demo and tests | Native runtime and clean setup |
-| iPhone/iPad simulator | Menu self-tests and interactive menu checks | Fresh Xcode installation |
-| Android phone/tablet emulator | Menu self-tests | Fresh SDK installation; manual visual check |
+| iPhone simulator | Menu self-tests and interactive menu checks | Fresh Xcode installation |
+| Android phone emulator | Menu self-tests | Fresh SDK installation; manual visual check |
 
 `test_menu --native` checks actual platform widgets; CTest checks shared behavior
 and a headless demo smoke run. Mobile self-tests print MENU_SELF_TEST=PASS/FAIL.

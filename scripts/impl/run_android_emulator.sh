@@ -18,7 +18,6 @@ default_target_help() {
   cat <<'EOF'
 Default Android emulator target profiles:
   android-phone   first AVD matching "phone" or "pixel"
-  android-tablet  first AVD matching "tablet" or "tab"
 EOF
 }
 
@@ -29,7 +28,7 @@ Usage: ./scripts/run_android_emulator.sh --target <profile> [options]
 Build and install the Android sample app to a running or auto-started emulator.
 
 Options:
-  --target <profile>    One of: android-phone, android-tablet.
+  --target <profile>    One of: android-phone.
   --avd <name>          Launch or target a specific AVD name.
   --build-only          Build the APK without installing it.
   --no-launch           Install but do not launch the app activity.
@@ -97,24 +96,12 @@ fi
 
 validate_target_profile() {
   case "${TARGET_PROFILE}" in
-    ""|android-phone|android-tablet)
+    ""|android-phone)
       return 0
-      ;;
-    fire-tablet)
-      cat >&2 <<'EOF'
-The fire-tablet target was removed because this setup does not have a real built-in Fire tablet emulator profile.
-
-Use one of these instead:
-  - create a custom Fire-style AVD in Android Studio and pass it with --avd <name>
-  - use a physical Fire tablet for real Fire OS and Amazon Appstore validation
-
-See MOBILE-TESTING-SETUP.md for the current Fire testing workflow.
-EOF
-      return 1
       ;;
     *)
       echo "Unknown Android target profile: ${TARGET_PROFILE}" >&2
-      echo "Supported target profiles: android-phone, android-tablet." >&2
+      echo "Supported target profiles: android-phone." >&2
       return 1
       ;;
   esac
@@ -190,11 +177,8 @@ pick_default_avd() {
     android-phone)
       pick_default_avd_for_pattern "phone|pixel"
       ;;
-    android-tablet)
-      pick_default_avd_for_pattern "tablet|tab"
-      ;;
     "")
-      pick_default_avd_for_pattern "tablet|tab"
+      pick_default_avd_for_pattern "phone|pixel"
       ;;
     *)
       echo "Unknown target profile: ${TARGET_PROFILE}" >&2

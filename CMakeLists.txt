@@ -27,11 +27,6 @@ set(
   "dev.simplicityengine.hello-pixel"
   CACHE STRING
   "Bundle identifier used for iOS simulator/device app builds")
-set(
-  SIMPLICITY_ENGINE_IOS_DEVICE_FAMILY
-  "1,2"
-  CACHE STRING
-  "Apple device families for iOS builds (1=iPhone, 2=iPad)")
 
 include(FetchContent)
 
@@ -110,11 +105,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
       MACOSX_BUNDLE TRUE
       XCODE_ATTRIBUTE_GENERATE_INFOPLIST_FILE "YES"
       XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${SIMPLICITY_ENGINE_IOS_BUNDLE_IDENTIFIER}"
-      XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "${SIMPLICITY_ENGINE_IOS_DEVICE_FAMILY}"
+      XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1"
       XCODE_ATTRIBUTE_INFOPLIST_KEY_CFBundleDisplayName "Hello Pixel"
       XCODE_ATTRIBUTE_INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents "YES"
-      XCODE_ATTRIBUTE_INFOPLIST_KEY_UISupportedInterfaceOrientations "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-      XCODE_ATTRIBUTE_INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight")
+      XCODE_ATTRIBUTE_INFOPLIST_KEY_UISupportedInterfaceOrientations "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight")
 endif()
 if(WIN32)
   set_target_properties(${SIMPLICITY_ENGINE_APP_TARGET} PROPERTIES WIN32_EXECUTABLE TRUE)

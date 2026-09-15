@@ -14,7 +14,7 @@ Usage: ./scripts/build_target.sh <target> [options]
 Build a supported target through one public entrypoint.
 
 Targets wired now:
-  macos, host, ios-phone, ios-tablet, android-phone, android-tablet
+  macos, host, ios-phone, android-phone
 
 Targets planned next:
   windows-x64, windows-arm64, linux-x64, linux-arm64, fireos, chromeos
@@ -82,14 +82,8 @@ case "$TARGET" in
   ios-phone|ios-iphone)
     exec "${SCRIPT_DIR}/run_ios_iphone.sh" --build-only "${PASS_THROUGH[@]}"
     ;;
-  ios-tablet|ios-ipad|ios)
-    exec "${SCRIPT_DIR}/run_ios_ipad.sh" --build-only "${PASS_THROUGH[@]}"
-    ;;
   android-phone)
     exec "${SCRIPT_DIR}/run_android_phone.sh" --build-only "${PASS_THROUGH[@]}"
-    ;;
-  android-tablet|android)
-    exec "${SCRIPT_DIR}/run_android_tablet.sh" --build-only "${PASS_THROUGH[@]}"
     ;;
   windows-x64|windows-arm64|linux-x64|linux-arm64|fireos|chromeos)
     echo "Build routing for ${TARGET} is still a stub." >&2

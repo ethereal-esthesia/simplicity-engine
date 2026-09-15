@@ -24,7 +24,7 @@ def main():
     parser.add_argument('--storage', type=Path, default=Path(os.environ.get('SIMPLICITY_STORAGE', ROOT / 'local/dev')))
     parser.add_argument('--vm-path', type=Path, help='Existing .utm bundle; never imports or modifies other VM formats')
     parser.add_argument('--media', type=Path, help='Existing ISO or macOS IPSW; referenced without copying')
-    parser.add_argument('--device', choices=['phone', 'tablet', 'all'], default='all')
+    parser.add_argument('--device', choices=['phone'], default='phone')
     parser.add_argument('--guest', help='For an existing Unix guest: SSH user@hostname with this checkout already available')
     parser.add_argument('--guest-repo', help='Absolute path to this checkout inside the SSH guest')
     args = parser.parse_args()
@@ -141,7 +141,7 @@ For macOS/Linux, rerun this host command with --guest user@host --guest-repo /pa
                 raise Incomplete('Install an iOS runtime with xcodebuild -downloadPlatform iOS, then rerun.')
             if args.check:
                 devices = read_json(['xcrun', 'simctl', 'list', 'devices', 'available', '-j'])['devices']
-                for family in (['iPhone', 'iPad'] if args.device == 'all' else ['iPhone' if args.device == 'phone' else 'iPad']):
+                for family in ['iPhone']:
                     if not any(d['name'].startswith(family) for k, group in devices.items() if 'iOS' in k for d in group):
                         raise Incomplete(f'No {family} simulator; run setup without --check.')
             else:
@@ -157,7 +157,7 @@ For macOS/Linux, rerun this host command with --guest user@host --guest-repo /pa
                 for relative in ['platform-tools/adb', 'emulator/emulator', 'platforms/android-36/android.jar', 'build-tools/36.0.0', 'ndk/27.2.12479018', 'cmake/3.22.1', f'system-images/android-36.1/google_apis/{abi}/system.img']:
                     if not (sdk / relative).exists():
                         raise Incomplete(f'Missing Android dependency: {relative}. Run setup without --check.')
-                for lane in (['phone', 'tablet'] if args.device == 'all' else [args.device]):
+                for lane in ['phone']:
                     if not (Path(os.environ.get('ANDROID_AVD_HOME', str(Path.home() / '.android/avd'))) / f'Simplicity_{lane}.ini').is_file():
                         raise Incomplete(f'Simplicity_{lane} AVD missing. Run setup without --check.')
                 require('java')
@@ -166,7 +166,7 @@ For macOS/Linux, rerun this host command with --guest user@host --guest-repo /pa
                 run(['bash', BACKENDS / 'android.sh', '--' + args.device], env)
             say(f'Android SDK reused at {sdk}; new AVD disks use {storage / "avd"}. Existing AVDs are retained.')
         say('PASSED: setup prerequisites ready. No build or runtime test was run.')
-        say('Next: scripts/menu_demo.sh test host (or ios-phone / ios-tablet / android-phone / android-tablet).')
+        say('Next: scripts/menu_demo.sh test host (or ios-phone / android-phone).')
         return 0
     except Incomplete as error:
         say(f'SETUP INCOMPLETE: {error}')

@@ -121,12 +121,9 @@ Useful variants:
 
 By default, build and app output is written to `logs/`. Use `--console` when you want the full output attached to the current shell.
 
-### iPad Simulator
 
-To build the sample app as an iPad-form iOS app and launch it in Simulator:
 
 ```bash
-./scripts/run_ios_ipad.sh
 ```
 
 For iPhone Simulator instead:
@@ -141,18 +138,14 @@ To build, install, and launch the sample app on a running Android emulator, or a
 
 ```bash
 ./scripts/run_android_phone.sh
-./scripts/run_android_tablet.sh
 ```
 
 Useful variants:
 
 ```bash
 ./scripts/run_android_phone.sh --build-only
-./scripts/run_android_tablet.sh --build-only
-./scripts/run_android_emulator.sh --avd Half_Screen_Tablet_API_36.1
 ```
 
-For Fire-tablet compatibility smoke tests, create a custom AVD that matches a Fire tablet and launch it with `--avd <name>`. For Amazon Appstore retail-page and final Fire OS checks, use a physical Fire tablet and Amazon Live App Testing.
 
 Requirements for the Android path:
 - Android SDK with platform-tools, emulator, and at least one system image

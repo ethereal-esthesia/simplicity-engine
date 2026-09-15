@@ -11,8 +11,8 @@ commands, the menu setup command, and all Parallels helpers.
 ./scripts/dev-setup.sh --target linux --vm --storage "/Volumes/Storage/VM Images/Simplicity"
 ./scripts/dev-setup.sh --target windows --vm --storage "/Volumes/Storage/VM Images/Simplicity"
 ./scripts/dev-setup.sh --target macos --vm --storage "/Volumes/Storage/VM Images/Simplicity"
-./scripts/dev-setup.sh --target android --device all
-./scripts/dev-setup.sh --target ios --device all
+./scripts/dev-setup.sh --target android --device phone
+./scripts/dev-setup.sh --target ios --device phone
 ```
 
 ## What setup does
@@ -25,11 +25,10 @@ commands, the menu setup command, and all Parallels helpers.
   Installer/license prompts remain interactive. Open a developer shell afterwards.
 - Android: reuses the SDK selected by ANDROID_SDK_ROOT/ANDROID_HOME or the usual
   host SDK location, installs the pinned SDK/NDK/CMake/image packages, and creates
-  missing Simplicity phone/tablet AVDs. SDK Command-line Tools and Java must already
+  missing Simplicity phone AVDs. SDK Command-line Tools and Java must already
   be installed. Android Studio's SDK Manager provides these tools. SDK license
   prompts are not automatically accepted.
-- iOS: requires full Xcode and an installed iOS runtime, reuses available phone/
-  tablet simulators, and creates missing devices. Missing runtimes are reported
+- iOS: requires full Xcode and an installed iOS runtime, reuses available phone simulators, and creates missing devices. Missing runtimes are reported
   with the download command. Xcode installation and its license are user steps.
 
 `--check` reports readiness without installing, creating directories, writing logs,
@@ -84,9 +83,7 @@ rerun. Package managers reuse their caches; there is no custom large-image downl
 ```sh
 ./scripts/menu_demo.sh test host
 ./scripts/menu_demo.sh test ios-phone
-./scripts/menu_demo.sh test ios-tablet
 ./scripts/menu_demo.sh test android-phone
-./scripts/menu_demo.sh test android-tablet
 # Inside Windows, from a Visual Studio developer shell:
 # .\scripts\menu\demo.ps1 -Action test
 ```

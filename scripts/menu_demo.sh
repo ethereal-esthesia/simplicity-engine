@@ -3,7 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ACTION="${1:-help}"; TARGET="${2:-host}"
 if [[ "$ACTION" == help || "$ACTION" == --help ]]; then
-  echo 'Usage: scripts/menu_demo.sh <build|test|run> <host|ios-phone|ios-tablet|android-phone|android-tablet>'
+  echo 'Usage: scripts/menu_demo.sh <build|test|run> <host|ios-phone|android-phone>'
   echo 'Windows: use scripts/menu/demo.ps1 from a Visual Studio developer shell.'
   exit 0
 fi
@@ -23,8 +23,8 @@ case "$TARGET" in
       else "$BUILD/test_menu" --native; fi
     elif [[ "$ACTION" == run ]]; then exec "$BIN"; fi
     ;;
-  ios-phone|ios-tablet)
-    if [[ "$TARGET" == ios-phone ]]; then FAMILY=iPhone; FLAG=--phone; else FAMILY=iPad; FLAG=--tablet; fi
+  ios-phone)
+    FAMILY=iPhone
     BUILD="${SIMPLICITY_MENU_BUILD_DIR:-$ROOT/build/menu-ios}"
     cmake -S "$ROOT" -B "$BUILD" -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphonesimulator -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 -DSIMPLICITY_MENU_DEMO=ON
     cmake --build "$BUILD" --target hello_pixel --config Debug -j "${SIMPLICITY_JOBS:-4}"
@@ -45,9 +45,8 @@ case "$TARGET" in
       xcrun simctl launch "$DEVICE" "$ID"
     fi
     ;;
-  android-phone|android-tablet)
+  android-phone)
     FLAG=--phone; NAME=Simplicity_phone; PORT=5554
-    if [[ "$TARGET" == android-tablet ]]; then FLAG=--tablet; NAME=Simplicity_tablet; PORT=5556; fi
     DEFAULT_SDK="$HOME/Android/Sdk"
     [[ $(uname -s) == Darwin ]] && DEFAULT_SDK="$HOME/Library/Android/sdk"
     SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$DEFAULT_SDK}}"

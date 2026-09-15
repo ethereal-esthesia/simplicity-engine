@@ -3,10 +3,10 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-PRESET="ios-ipad-simulator-debug"
+PRESET="ios-iphone-simulator-debug"
 DEVICE_NAME=""
 BUILD_ONLY=0
-DEVICE_CLASS="ipad"
+DEVICE_CLASS="iphone"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -18,10 +18,10 @@ usage() {
 Usage: scripts/run_ios_simulator.sh [options]
 
 Options:
-  --preset <name>    CMake preset to configure/build. Default: ios-ipad-simulator-debug
+  --preset <name>    CMake preset to configure/build. Default: ios-iphone-simulator-debug
   --device <name>    Exact simulator device name. Default: first available device in the chosen class
   --device-class <name>
-                     Simulator family to use: ipad or iphone. Default: ipad
+                     Simulator family to use: iphone. Default: iphone
   --build-only       Configure and build, but do not boot/install/launch
   -h, --help         Show this help
 EOF
@@ -91,14 +91,13 @@ if requested:
     )
 
 prefix = {
-    "ipad": "iPad",
     "iphone": "iPhone",
 }.get(requested_class)
 
 if prefix is None:
     raise SystemExit(
         f"Unsupported simulator device class '{requested_class}'. "
-        "Use 'ipad' or 'iphone'."
+        "Use 'iphone'."
     )
 
 for entry in devices:
@@ -146,15 +145,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$DEVICE_CLASS" != "ipad" && "$DEVICE_CLASS" != "iphone" ]]; then
-  usage_error "--device-class must be 'ipad' or 'iphone'."
+if [[ "$DEVICE_CLASS" != "iphone" ]]; then
+  usage_error "--device-class must be 'iphone'."
 fi
 
-if [[ "$PRESET" == "ios-ipad-"* ]]; then
-  DEVICE_CLASS="ipad"
-elif [[ "$PRESET" == "ios-iphone-"* ]]; then
-  DEVICE_CLASS="iphone"
-fi
 
 cd "$ROOT_DIR"
 
