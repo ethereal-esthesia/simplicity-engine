@@ -47,8 +47,13 @@ setup creates a UTM VM, exports its system disk to
 `STORAGE/vms/Simplicity-TARGET.utm`, removes only the verified temporary staging
 VM, opens the external bundle and attaches the ISO through UTM's scripting API.
 Media is referenced in place, not copied. The graphical display and shared network
-are configured. Windows also enables UTM's TPM device; Windows guest drivers/tools
-may still need installation in UTM. Windows installer completion is not yet verified.
+are configured. Windows also enables UTM's TPM device and downloads the official Windows guest-tools
+ISO into STORAGE/media, attaching it on a second CD drive. The cache is reused on
+repeat runs. Existing VMs must be shut down before adding or changing drives.
+The system disk and installer CD are retained. If Windows asks for a network
+driver, browse the UTM tools CD (including subfolders), not the Windows Sources
+folder. Driver installation still occurs inside Windows. Installer completion is
+not yet verified.
 
 ```sh
 ./scripts/dev-setup.sh --target linux --vm --storage "/Volumes/Storage/VM Images/Simplicity" \

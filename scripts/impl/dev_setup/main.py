@@ -97,7 +97,7 @@ def main():
                     raise Incomplete(f'VM missing: {vm}. Run without --check and supply --media for Linux/Windows.')
             elif args.target != 'macos':
                 from utm import prepare
-                prepare(vm, args.media, args.target, args.ram, args.cpus, args.disk, say)
+                prepare(vm, args.media, args.target, args.ram, args.cpus, args.disk, say, storage=storage)
             elif args.media or not (vm / 'config.plist').is_file():
                 raise Incomplete('UTM scripting does not expose macOS IPSW installation. Create macOS in UTM and rerun with --vm-path pointing to it, without --media.')
             say(f'Existing VM: {vm}')
