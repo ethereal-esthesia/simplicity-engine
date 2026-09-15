@@ -28,30 +28,18 @@ class UTMTests(unittest.TestCase):
             self.assertNotIn('create_utm.applescript', [c.args[0] for c in script.call_args_list])
             self.assertEqual(script.call_args_list[-1].args[-1], iso.resolve())
 
-    def test_guest_tools_download_is_cached(self):
-        with tempfile.TemporaryDirectory() as folder:
-            cache = Path(folder)
-            def download(command, **kwargs):
-                output = Path(command[command.index('--output') + 1])
-                output.write_bytes(bytes(32769) + b'CD001' + bytes(100))
-            with patch.object(utm.subprocess, 'run', side_effect=download) as run:
-                first = utm.tools_iso(cache, lambda _: None)
-                second = utm.tools_iso(cache, lambda _: None)
-            self.assertEqual(first, second)
-            self.assertEqual(run.call_count, 1)
-
-    def test_tools_addition_preserves_installer_and_system_disk(self):
+    def test_empty_tools_drive_preserves_existing_drives_and_is_reused(self):
         with tempfile.TemporaryDirectory() as folder:
             vm = Path(folder) / 'VM.utm'; self.fixture(vm)
-            iso = Path(folder) / 'tools.iso'; iso.write_bytes(b'iso')
             original = utm.read_config(vm)['Drive']
-            def attach(*args):
+            def add(*args):
                 config = utm.read_config(vm)
-                config['Drive'].append({'ImageType': 'CD', 'Identifier': 'tools'})
+                config['Drive'].append({'ImageType': 'CD', 'Identifier': 'empty-tools'})
                 (vm / 'config.plist').write_bytes(plistlib.dumps(config))
-                return '0'
-            with patch.object(utm, 'script', side_effect=attach):
-                utm.attach_tools(vm, 'test-id', iso, lambda _: None)
+            with patch.object(utm, 'script', side_effect=add) as script:
+                utm.ensure_tools_drive(vm, 'test-id', lambda _: None)
+                utm.ensure_tools_drive(vm, 'test-id', lambda _: None)
+                self.assertEqual(script.call_count, 1)
             self.assertEqual(utm.read_config(vm)['Drive'][:2], original)
 
     def test_export_without_disk_cannot_delete_staging(self):

@@ -30,43 +30,14 @@ def script(name, *args):
     return result.stdout.strip()
 
 
-TOOLS_URL = 'https://getutm.app/downloads/utm-guest-tools-latest.iso'
-
-
-def tools_iso(cache, say):
-    cache.mkdir(parents=True, exist_ok=True)
-    destination = cache / 'utm-guest-tools.iso'
-    def valid(path):
-        if not path.is_file() or path.stat().st_size < 32774:
-            return False
-        with path.open('rb') as stream:
-            stream.seek(32769)
-            return stream.read(5) == b'CD001'
-    if valid(destination):
-        say(f'Reusing Windows guest tools: {destination}')
-        return destination
-    partial = destination.with_suffix('.iso.part')
-    say(f'Downloading official UTM Windows guest tools to {destination}')
-    subprocess.run(['curl', '--fail', '--location', '--retry', '3', '--connect-timeout', '30',
-                    '--output', str(partial), TOOLS_URL], check=True)
-    if not valid(partial):
-        raise RuntimeError('Downloaded guest tools are not a valid ISO; incomplete file retained for inspection.')
-    partial.replace(destination)
-    return destination
-
-
-def attach_tools(vm, vm_id, media, say):
+def ensure_tools_drive(vm, vm_id, say):
     before = read_config(vm)['Drive']
-    size = int(script('attach_tools_utm.applescript', vm_id, media))
-    after = read_config(vm)['Drive']
-    disks = lambda drives: [d for d in drives if d.get('ImageName')]
-    if disks(before) != disks(after) or before[0] != after[0]:
-        raise RuntimeError('Drive verification failed after attaching guest tools.')
-    if sum(d.get('ImageType') == 'CD' for d in after) != 2:
-        raise RuntimeError('Expected exactly two CD drives after attaching guest tools.')
-    if size != media.stat().st_blocks * 512 // (1024 * 1024):
-        raise RuntimeError('UTM reports an unexpected guest-tools ISO size.')
-    say(f'Windows guest tools attached on the second CD drive: {media}')
+    if sum(d.get('ImageType') == 'CD' for d in before) < 2:
+        script('ensure_tools_drive.applescript', vm_id)
+        after = read_config(vm)['Drive']
+        if after[:len(before)] != before or len(after) != len(before) + 1:
+            raise RuntimeError('Drive verification failed while adding an empty CD drive.')
+    say('In UTM, choose Drives > Install Windows Guest Tools. If its CD is occupied, eject that tools CD first. The Windows installer and system disk are retained.')
 
 
 def prepare(vm, media, target, ram, cores, disk_gib, say, storage=None):
@@ -130,8 +101,7 @@ def prepare(vm, media, target, ram, cores, disk_gib, say, storage=None):
             raise RuntimeError('UTM reports an unexpected installation-media size.')
         say(f'ISO attached and size verified: {media}')
     if target == 'windows':
-        cache = (Path(storage) if storage else vm.parent.parent) / 'media'
-        attach_tools(vm, vm_id, tools_iso(cache, say), say)
+        ensure_tools_drive(vm, vm_id, say)
     journal.write_text(json.dumps({'state': 'ready', 'vm': str(vm), 'id': vm_id, 'media': str(media) if media else None}, indent=2))
     say(f'VM configured at {vm}. Start it in UTM to complete OS installation.')
     return vm_id
