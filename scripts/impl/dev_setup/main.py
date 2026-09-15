@@ -23,10 +23,13 @@ def main():
     parser.add_argument('--check', action='store_true', help='Read-only prerequisite and environment check')
     parser.add_argument('--storage', type=Path, default=Path(os.environ.get('SIMPLICITY_STORAGE', ROOT / 'local/dev')))
     parser.add_argument('--vm-path', type=Path, help='Existing .utm bundle; never imports or modifies other VM formats')
-    parser.add_argument('--media', type=Path, help='Existing ISO or macOS IPSW; referenced without copying')
+    parser.add_argument('--media', type=Path, help='Linux/Windows installation ISO; attached without copying')
     parser.add_argument('--device', choices=['phone'], default='phone')
     parser.add_argument('--guest', help='For an existing Unix guest: SSH user@hostname with this checkout already available')
     parser.add_argument('--guest-repo', help='Absolute path to this checkout inside the SSH guest')
+    parser.add_argument('--ram', type=int, default=4096, help='New VM RAM in MiB')
+    parser.add_argument('--cpus', type=int, default=4, help='New VM CPU cores')
+    parser.add_argument('--disk', type=int, default=64, help='New VM disk capacity in GiB')
     args = parser.parse_args()
     if (args.vm_path or args.media or args.guest or args.guest_repo) and not args.vm:
         parser.error('--vm-path, --media and --guest options require --vm')
@@ -36,6 +39,8 @@ def main():
         parser.error('--guest and --guest-repo must be supplied together')
     if args.guest and (args.target == 'windows' or args.guest.startswith('-') or not args.guest_repo.startswith('/')):
         parser.error('--guest requires a Unix target, SSH destination, and absolute --guest-repo')
+    if args.ram < 1024 or args.cpus < 1 or args.disk < 16:
+        parser.error('Use at least 1024 MiB RAM, one CPU core, and 16 GiB disk.')
     host = {'Darwin': 'macos', 'Linux': 'linux', 'Windows': 'windows'}.get(platform.system())
     storage = args.storage.expanduser().absolute()
     if str(storage).startswith('/Volumes/'):
@@ -87,26 +92,14 @@ def main():
             vm = args.vm_path.expanduser().absolute() if args.vm_path else storage / 'vms' / f'Simplicity-{args.target}.utm'
             if args.media and not args.media.expanduser().is_file():
                 raise Incomplete(f'Media does not exist: {args.media}')
-            if not vm.is_dir() or not (vm / 'config.plist').is_file():
-                instructions = f'''One-time UTM setup for {args.target}:
-1. Create a VM in UTM using Virtualize, then select {args.target}.
-   For macOS use Apple virtualization and UTM's compatible IPSW download.
-   For Linux/Windows use installation media matching the Mac architecture.
-   Media: {args.media or 'choose/download official installation media in the wizard'}
-2. Save the VM as {vm}. Use --vm-path to reuse a different .utm bundle.
-3. Complete OS installation, license acceptance, and account setup in the guest.
-4. Make this repository available inside the guest (clone or shared folder).
-5. Run ./scripts/dev-setup.sh --target {args.target} inside the Unix guest,
-   or .\\scripts\\dev-setup.ps1 inside Windows. Then run the separate Menu Studio test.
-For macOS/Linux, rerun this host command with --guest user@host --guest-repo /path/to/repo
- to provision over SSH. Enable SSH in the guest first; setup does not change network access.
-'''
-                say(instructions)
-                if not args.check:
-                    vm.parent.mkdir(parents=True, exist_ok=True)
-                    (storage / f'{args.target}-next-steps.txt').write_text(instructions)
-                    run(['open', '-a', str(utm)])
-                raise Incomplete('UTM is available; the guest OS still needs its one-time installation.')
+            if args.check:
+                if not (vm / 'config.plist').is_file():
+                    raise Incomplete(f'VM missing: {vm}. Run without --check and supply --media for Linux/Windows.')
+            elif args.target != 'macos':
+                from utm import prepare
+                prepare(vm, args.media, args.target, args.ram, args.cpus, args.disk, say)
+            elif args.media or not (vm / 'config.plist').is_file():
+                raise Incomplete('UTM scripting does not expose macOS IPSW installation. Create macOS in UTM and rerun with --vm-path pointing to it, without --media.')
             say(f'Existing VM: {vm}')
             if args.guest:
                 import shlex

@@ -88,3 +88,5 @@ Expected artifacts:
 See [Menu Studio validation](docs/menu.md) and [developer setup](docs/developer-setup.md).
 Run `python3 tests/test_dev_setup.py` for setup orchestration regression checks.
 Run `./scripts/menu_demo.sh test host` for the desktop demo and native menu test.
+
+Run `python3 tests/test_utm_setup.py` for VM export and existing-disk preservation checks.

@@ -42,17 +42,37 @@ The VM backend runs on macOS and installs UTM with Homebrew if missing. UTM uses
 Apple virtualization for macOS and its QEMU backend for Windows/Linux. macOS guests
 require Apple Silicon. UTM is free; guest OS licensing remains separate.
 
-**VM creation and OS installation currently use the UTM wizard.** Setup opens UTM,
-prints exact next steps, saves those instructions, and returns SETUP INCOMPLETE.
-It never labels installed UTM or a staged image as a working guest. Use official
-installation media matching your Mac architecture; `--media /path/to/image.iso`
-(or IPSW) records an existing image in the instructions without duplicating it.
-UTM can download a compatible macOS IPSW in its wizard.
+Linux and Windows VM creation is automated. Supply `--media /path/to/installer.iso`;
+setup creates a UTM VM, exports its system disk to
+`STORAGE/vms/Simplicity-TARGET.utm`, removes only the verified temporary staging
+VM, opens the external bundle and attaches the ISO through UTM's scripting API.
+Media is referenced in place, not copied. The graphical display and shared network
+are configured. Windows also enables UTM's TPM device; Windows guest drivers/tools
+may still need installation in UTM. Windows installer completion is not yet verified.
 
-Save the bundle to STORAGE/vms/Simplicity-TARGET.utm, or select an existing bundle
-with `--vm-path /path/to/existing.utm`. Reruns reuse that bundle. No disk conversion,
-Parallels migration, deletion, automatic snapshots or unattended OS installation
-is performed. Existing Parallels VMs on disk remain yours to use independently.
+```sh
+./scripts/dev-setup.sh --target linux --vm --storage "/Volumes/Storage/VM Images/Simplicity" \
+  --media "/Volumes/Storage/VM Images/ISOs/Fedora-Workstation-Live-44-1.7.aarch64.iso" \
+  --ram 4096 --cpus 4 --disk 64
+```
+
+RAM is in MiB and disk capacity in GiB. These settings apply only to new VMs.
+Use `--vm-path /path/to/existing.utm` to reuse another bundle. Existing disks and
+resource settings are preserved. Explicit `--media` updates the first CD drive of a
+stopped QEMU VM; omit it after installation to leave removable media unchanged.
+No existing VM is overwritten. If creation is interrupted, the adjacent `.setup.json`
+journal identifies the staging/export state; setup stops for inspection instead of
+creating duplicates. UTM may require a macOS Automation permission prompt.
+
+The guest OS installer, license and account steps remain interactive. VM creation
+alone returns SETUP INCOMPLETE, never a claim that guest provisioning/tests passed.
+The Linux configuration has been verified to reach the Fedora boot menu. Windows
+creation/export/media attachment have been checked, but its installation remains to test.
+
+**macOS restore installation is still manual.** UTM's scripting API exposes Apple
+Linux creation but not the macOS IPSW restore operation. Create macOS in UTM and
+supply its existing `--vm-path`; `--media` is rejected for this target rather than
+silently ignored. No automatic snapshots or unattended OS installation are performed.
 
 After installing the OS and completing its account/license steps, clone or share
 this repository into the guest and run the native setup command there. Unix guests
@@ -71,8 +91,8 @@ credentials. Windows provisioning runs locally in the guest with PowerShell.
 ## Storage and repeat runs
 
 `--storage PATH` (or SIMPLICITY_STORAGE) defaults to ignored `local/dev`. It holds
-logs, VM instructions and new Android AVD disks. VM storage is chosen in the UTM
-wizard using the printed path. An unmounted /Volumes destination is rejected.
+logs, exported VM bundles and new Android AVD disks. macOS VM storage is chosen
+in UTM during its manual restore setup. An unmounted /Volumes destination is rejected.
 Existing SDKs/AVDs are reused in place, not moved. Set ANDROID_SDK_ROOT to put the
 SDK itself on another drive. Apple manages Xcode/simulator storage separately.
 No completion marker skips real prerequisite checks, so interrupted setup can be
