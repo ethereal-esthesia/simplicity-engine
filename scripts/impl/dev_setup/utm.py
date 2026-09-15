@@ -78,6 +78,8 @@ def prepare(vm, media, target, ram, cores, disk_gib, say, storage=None):
         script('delete_staging_utm.applescript', vm_id)
         if target == 'windows':
             config['QEMU']['TPMDevice'] = True
+            config['Information']['Icon'] = 'windows'
+            config['Information']['IconCustom'] = False
             with (vm / 'config.plist').open('wb') as stream:
                 plistlib.dump(config, stream)
     else:
