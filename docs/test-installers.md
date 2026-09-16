@@ -4,6 +4,8 @@ The [Test installers workflow](https://github.com/ethereal-esthesia/simplicity-e
 builds downloadable development packages on relevant pushes to `main` and on
 **Run workflow**. Downloads are attached to the workflow run under **Artifacts**
 and retained for 14 days. Each includes the source commit and SHA-256 checksums.
+App archives are checked for the expected CPU architecture; iOS downloads must
+also identify themselves as simulator apps.
 These are Tauri packages; the retained SDL release workflow is separate.
 
 ## Build matrix
@@ -17,7 +19,7 @@ These are Tauri packages; the retained SDL release workflow is separate.
 | Linux x64 | Ubuntu 22.04 | DEB, RPM, AppImage |
 | Linux ARM64 | Ubuntu 24.04 ARM | DEB, RPM, AppImage |
 | Android | Ubuntu + JDK 17 + NDK 27 | Debug APKs for arm64, armv7, x86, x86_64 |
-| iOS Simulator | macOS + Xcode | Zipped simulator .app for ARM64 and Intel Macs |
+| iOS Simulator | Native ARM64/Intel macOS + Xcode | Zipped simulator .app for ARM64 and Intel Macs |
 
 These are GitHub-hosted virtual machines, with native packaging tools on each OS.
 A single Linux container cannot produce all supported installers reliably. The

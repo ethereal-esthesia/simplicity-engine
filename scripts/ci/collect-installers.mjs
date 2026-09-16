@@ -17,6 +17,17 @@ async function collect(directory) {
       if (entry.name.endsWith('.app')) {
         // Preserve executable bits, symlinks and macOS metadata in downloadable apps.
         if (kind === 'desktop' || (kind === 'ios' && path.includes('.xcarchive/Products/Applications/'))) {
+          const plist = join(path, kind === 'ios' ? 'Info.plist' : 'Contents/Info.plist');
+          const readPlist = key => execFileSync('/usr/libexec/PlistBuddy',
+            ['-c', `Print :${key}`, plist], { encoding: 'utf8' }).trim();
+          const executable = readPlist('CFBundleExecutable');
+          const binary = join(path, kind === 'ios' ? executable : `Contents/MacOS/${executable}`);
+          const expected = label.endsWith('-x64') ? 'x86_64' : 'arm64';
+          const actual = execFileSync('lipo', ['-archs', binary], { encoding: 'utf8' }).trim().split(/\s+/);
+          if (!actual.includes(expected)) throw new Error(`${label} contains ${actual}, expected ${expected}`);
+          if (kind === 'ios' && readPlist('DTPlatformName') !== 'iphonesimulator') {
+            throw new Error('Refusing to package a device app as a simulator download');
+          }
           const name = `${label}-${entry.name}.zip`;
           execFileSync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', path, join(output, name)]);
           files.push(name);
