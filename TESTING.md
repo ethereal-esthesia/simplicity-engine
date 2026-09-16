@@ -7,7 +7,9 @@ Run `make` to compile the native Tauri host with the generated Wasm embedded.
 Run `make run` for a webview check: a dark background with a centered 8-pixel mint
 mark, still centered after resizing. Engine load errors must be visible.
 `make bundle` builds the macOS app; test its launch separately from development.
-Other Tauri platforms and mobile packaging are not validated yet.
+The [installer workflow](docs/test-installers.md) compiles other desktop targets,
+Android APKs, and iOS Simulator apps. Runtime and installation checks on those
+targets remain separate from compile checks.
 
 ## Retained Apple demos
 

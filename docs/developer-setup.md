@@ -8,7 +8,7 @@ Run `make setup`, then `make test` and `make`. Use `make run` to launch the app 
 The Wasm target is `wasm32-unknown-unknown`; the Tauri host builds for the native OS.
 
 Other Tauri platforms require their own [prerequisites](https://v2.tauri.app/start/prerequisites/)
-and are not yet validated here. `make ios-build` below still builds the retained
+and have [CI testing packages](test-installers.md); runtime testing is still required. `make ios-build` below still builds the retained
 SDL simulator app.
 
 ## Retained Apple demos

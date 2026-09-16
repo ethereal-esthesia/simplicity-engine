@@ -19,10 +19,10 @@ in Tauri's separate Rust crate. Do not duplicate core logic in JavaScript or Swi
 | Target | Tauri webview | Repository status |
 |---|---|---|
 | macOS | WKWebView | Initial Hello Pixel host |
-| Windows | WebView2 | Not validated or packaged |
-| Linux | WebKitGTK | Not validated or packaged |
-| iPhone/iPad | WKWebView | Tauri project pending; existing SDL iPhone demo retained |
-| Android | Android System WebView | Not configured |
+| Windows | WebView2 | CI test installers; device validation pending |
+| Linux | WebKitGTK | CI test installers; device validation pending |
+| iPhone/iPad | WKWebView | CI simulator apps; device signing pending; SDL demo retained |
+| Android | Android System WebView | CI debug APKs; device validation pending |
 
 Validate each platform before promising support. Rust/Wasm portability does not
 replace tests for graphics, permissions, native menus, or device lifecycle.
@@ -30,3 +30,5 @@ Tauri uses platform webviews; see [upstream details](https://v2.tauri.app/refere
 
 Prior native Windows/Linux/Android and VM tooling remains on
 [the archive branch](https://github.com/ethereal-esthesia/simplicity-engine/tree/codex/archive-multiplatform-2026-09-15).
+
+See [test installer downloads and limitations](test-installers.md).

@@ -18,9 +18,10 @@ and Tauri**.
 
 Tauri is the sole planned app host. There is no Electron dependency or build path.
 Tauri supports macOS, Windows, Linux, iOS/iPadOS, and Android, but this repository's
-new host is currently validated on macOS only. Mobile projects, signing, and other
-platform packages still need setup and testing; framework coverage is not a claim
-that this app already ships on every platform.
+new host has been run and visually checked on macOS. GitHub Actions builds
+[test installers](docs/test-installers.md) for desktop platforms, Android, and iOS
+Simulator. These builds still require testing on target devices; iPhone device
+signing and production distribution are not configured.
 
 See the [roadmap](docs/platform-targets-todo.md) and
 [engine definition](docs/engine-definition.md). Earlier platform code is preserved
@@ -116,5 +117,7 @@ See [probe documentation](probes/README.md).
 ## GitHub builds and releases
 
 CI tests the Rust core natively and as Wasm, builds a macOS Tauri app, and retains
-the Apple native checks. Tag-driven releases still publish the existing macOS SDL
-archives; Tauri release distribution and signing are not configured yet.
+the Apple native checks. The separate [Test installers workflow](docs/test-installers.md)
+produces desktop installers, Android debug APKs, and iOS Simulator apps as downloadable
+artifacts. Tag-driven releases still publish the existing macOS SDL archives; Tauri
+production signing and release distribution are not configured yet.
