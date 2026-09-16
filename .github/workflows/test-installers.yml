@@ -1,0 +1,183 @@
+name: Test installers
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/**'
+      - 'src-tauri/**'
+      - 'web/**'
+      - 'Cargo.*'
+      - 'package*.json'
+      - 'scripts/build-wasm.mjs'
+      - 'scripts/ci/**'
+      - '.github/workflows/test-installers.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-installers-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'
+
+jobs:
+  desktop:
+    name: ${{ matrix.name }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            bundles: app,dmg
+          - name: macos-x64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            bundles: app,dmg
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis,msi
+          - name: windows-arm64
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+            bundles: nsis
+          - name: linux-x64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: deb,rpm,appimage
+          - name: linux-arm64
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            bundles: deb,rpm,appimage
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install Linux packaging dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2 rpm xdg-utils
+      - name: Prepare Rust targets
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add wasm32-unknown-unknown ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: installers-${{ matrix.target }}
+      - run: npm ci
+      - name: Test shared core and compiled Wasm
+        run: npm test
+      - name: Build test installers
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: npm run tauri -- build --ci --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} -- --locked
+      - name: Collect packages and checksums
+        run: node scripts/ci/collect-installers.mjs desktop ${{ matrix.name }} target/${{ matrix.target }}/release/bundle
+      - uses: actions/upload-artifact@v6
+        with:
+          name: test-${{ matrix.name }}
+          path: dist/test-installers/${{ matrix.name }}/
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    name: android-apks
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android toolchain
+        run: |
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.2.12479018'
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add wasm32-unknown-unknown aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: installers-android
+      - run: npm ci
+      - name: Test core and generate Android project
+        run: |
+          npm test
+          npm run tauri -- android init --ci --skip-targets-install
+      - name: Build installable debug APKs for all four ABIs
+        run: npm run tauri -- android build --ci --debug --apk --split-per-abi
+      - name: Collect APKs and checksums
+        run: node scripts/ci/collect-installers.mjs android android src-tauri/gen/android/app/build/outputs/apk
+      - uses: actions/upload-artifact@v6
+        with:
+          name: test-android-apks
+          path: dist/test-installers/android/
+          if-no-files-found: error
+          retention-days: 14
+
+  ios:
+    name: ios-simulator-${{ matrix.arch }}
+    runs-on: macos-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            target: aarch64-sim
+            rust-target: aarch64-apple-ios-sim
+          - arch: x64
+            target: x86_64
+            rust-target: x86_64-apple-ios
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Prepare iOS toolchain
+        run: |
+          brew install xcodegen cocoapods libimobiledevice
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add wasm32-unknown-unknown ${{ matrix.rust-target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: installers-ios-${{ matrix.arch }}
+      - run: npm ci
+      - name: Test core and generate Xcode project
+        run: |
+          npm test
+          npm run tauri -- ios init --ci --skip-targets-install
+      - name: Build unsigned simulator app
+        run: npm run tauri -- ios build --ci --target ${{ matrix.target }} --no-sign --archive-only
+      - name: Collect simulator app and checksums
+        run: node scripts/ci/collect-installers.mjs ios ios-simulator-${{ matrix.arch }} src-tauri/gen/apple
+      - uses: actions/upload-artifact@v6
+        with:
+          name: test-ios-simulator-${{ matrix.arch }}
+          path: dist/test-installers/ios-simulator-${{ matrix.arch }}/
+          if-no-files-found: error
+          retention-days: 14
