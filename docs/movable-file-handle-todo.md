@@ -1,7 +1,7 @@
 # Movable File Handle Normalization TODO
 
 ## Goal
-Create a cross-platform class that can keep referring to a user-selected file or folder after normal renames and moves, while making each platform's guarantees explicit.
+Create an Apple-first class that can keep referring to a user-selected file or folder after normal renames and moves, while making each platform's guarantees explicit.
 
 Working name: `MovableFileHandle`.
 
@@ -24,16 +24,12 @@ Working name: `MovableFileHandle`.
 - [ ] `debugDescription()` that reports platform strategy and state without exposing sensitive token contents.
 
 ## Platform Backends
+
+Electron integration is deferred until the compatibility host exists.
 - [ ] macOS: prefer security-scoped `NSURL` bookmark data for user-selected files/folders.
 - [ ] macOS: use non-security-scoped bookmark data where sandbox permissions are not needed.
 - [ ] macOS: treat file reference URLs as runtime-only helpers, not durable serialized identity.
 - [ ] macOS: optionally test Finder alias behavior as a compatibility fallback, not the primary engine format.
-- [ ] Windows: use picker/FutureAccessList tokens for packaged app permission grants.
-- [ ] Windows: store file ID plus volume identity for same-volume rename/move tracking when available.
-- [ ] Windows: optionally resolve `.lnk`/Shell Link targets when importing user-provided shortcuts.
-- [ ] Linux: store `st_dev` and `st_ino` for best-effort identity checks.
-- [ ] Linux: investigate `name_to_handle_at` / `open_by_handle_at` as an advanced backend, gated by filesystem support and privileges.
-- [ ] Linux sandbox: support XDG document portal URIs/FUSE paths as persisted grants for Flatpak-style environments.
 
 ## Semantics to Normalize
 - [ ] `canResolveAfterRename`
@@ -62,11 +58,9 @@ Working name: `MovableFileHandle`.
 - [ ] Add negative tests for delete and recreate at the same path.
 - [ ] Add folder-target tests, including opening a child by relative path.
 - [ ] Extend the existing `probes/macos/bookmark_probe.mm` into a reusable backend probe or migrate it into tests.
-- [ ] Add Windows and Linux probes before locking the public API.
 
 ## Open Questions
 - [ ] Should this class live in the engine platform layer or the asset/resource layer?
 - [ ] Should the serialized token be JSON for inspectability or a compact binary blob with platform subrecords?
 - [ ] Do we need separate types for `MovableFileHandle` and `MovableFolderHandle`, or is target kind enough?
 - [ ] How much sandbox behavior should be compiled in by default versus enabled by platform feature flags?
-- [ ] What is the minimum acceptable Linux fallback when no portal and no privileged file-handle API are available?

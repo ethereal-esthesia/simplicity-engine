@@ -56,11 +56,9 @@ host_platform() {
     Darwin)
       printf 'macos\n'
       ;;
-    Linux)
-      printf 'linux-host\n'
-      ;;
     *)
-      printf 'host\n'
+      echo "Native builds require macOS." >&2
+      exit 1
       ;;
   esac
 }
@@ -95,13 +93,9 @@ find_executable() {
   for candidate in \
     "build/${preset}/${target}" \
     "build/${preset}/${target}.app" \
-    "build/${preset}/${target}.exe" \
     "build/${preset}/Debug/${target}" \
-    "build/${preset}/Debug/${target}.exe" \
     "build/${preset}/Release/${target}" \
-    "build/${preset}/Release/${target}.exe" \
-    "build/${preset}/RelWithDebInfo/${target}" \
-    "build/${preset}/RelWithDebInfo/${target}.exe"; do
+    "build/${preset}/RelWithDebInfo/${target}"; do
     if [[ -x "$candidate" || -d "$candidate" ]]; then
       printf '%s\n' "$candidate"
       return 0
@@ -274,6 +268,7 @@ run_logged "Configuring CMake preset '${PRESET}'" cmake --preset "$PRESET"
 run_logged "Building target '${TARGET}'" cmake --build --preset "$PRESET" --target "$TARGET"
 
 if [[ "$RUN_TESTS" -eq 1 ]]; then
+  run_logged "Building test targets" cmake --build --preset "$PRESET"
   run_logged "Running tests" ctest --test-dir "build/$PRESET" --output-on-failure
 fi
 

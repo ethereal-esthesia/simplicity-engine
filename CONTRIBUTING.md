@@ -1,40 +1,27 @@
 # Contributing
 
-Thanks for contributing to Simplicity Engine.
+The common engine language is C++, compiled to WebAssembly. The desktop direction
+is WebKit/WKWebView on macOS only and Electron for other desktops. Keep engine
+logic shared and host adapters thin. The Wasm pipeline and both hosts are planned;
+the existing macOS and iPhone/iOS native demos remain the buildable foundation.
+See the [roadmap](docs/platform-targets-todo.md).
 
-## Development Setup
+Use [Apple developer setup](docs/developer-setup.md). Before a pull request, build
+Debug and Release and run CTest for both:
 
-1. Install CMake (3.21+), Ninja, and a C compiler.
-2. Clone the repository.
-3. Use the debug preset for local iteration:
-
-```bash
+```sh
 cmake --preset debug
 cmake --build --preset debug
+ctest --test-dir build/debug --output-on-failure
+cmake --preset release
+cmake --build --preset release
+ctest --test-dir build/release --output-on-failure
 ```
 
-## Build Types
+For menu changes, run `./scripts/menu_demo.sh test host` and, for iOS changes,
+`./scripts/menu_demo.sh test ios-phone`. For setup changes, run
+`python3 tests/test_ios_setup.py`. See [testing](TESTING.md) for visual checks.
 
-- `Debug`: default development mode.
-- `Release`: optimized runtime mode.
-
-## Pull Requests
-
-Before opening a PR:
-
-1. Build both local presets:
-   - `cmake --preset debug && cmake --build --preset debug`
-   - `cmake --preset release && cmake --build --preset release`
-2. Run smoke tests:
-   - `./tools/smoke.sh debug`
-   - `./tools/smoke.sh release`
-3. If you touch container/build tooling, run:
-   - `docker run --rm -it -v "$PWD:/workspace" simplicity-engine-build ./tools/build-in-container.sh`
-4. Update `README.md` and/or `TESTING.md` when behavior or commands change.
-5. Keep changes focused and explain rationale in the PR description.
-
-## Coding Notes
-
-- Prefer clarity over cleverness.
-- Keep the initial runtime path simple and deterministic.
-- Avoid introducing heavyweight dependencies without discussion.
+Keep changes focused, prefer clarity, and update documentation when behavior or
+commands change. Do not reintroduce additional native platform backends or VM
+provisioning without revisiting the project direction.

@@ -2,71 +2,41 @@ name: CI
 
 on:
   push:
-    branches:
-      - "**"
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-
-    runs-on: ${{ matrix.os }}
-
+  macos:
+    runs-on: macos-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
+      - uses: actions/checkout@v5
+      - name: Install Ninja
+        run: brew install ninja
+      - name: Debug build and tests
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            cmake \
-            ninja-build \
-            pkg-config \
-            xorg-dev \
-            libasound2-dev \
-            libpulse-dev \
-            libudev-dev \
-            libwayland-dev \
-            libxkbcommon-dev \
-            libdrm-dev \
-            libgbm-dev \
-            libgl1-mesa-dev \
-            libegl1-mesa-dev
-
-      - name: Install Ninja (Windows)
-        if: runner.os == 'Windows'
-        run: choco install ninja -y
-
-      - name: Configure (Debug)
-        run: cmake --preset debug
-
-      - name: Build (Debug)
-        run: cmake --build --preset debug
-
-      - name: Smoke Tests (Debug)
-        shell: bash
-        run: ./tools/smoke.sh debug
-
-      - name: Configure (Release)
-        run: cmake --preset release
-
-      - name: Build (Release)
-        run: cmake --build --preset release
-
-      - name: All Tests (Release, Linux x86)
-        if: runner.os == 'Linux'
-        run: ctest --test-dir build/release --output-on-failure
-
-      - name: Smoke Tests (Release, non-Linux)
-        if: runner.os != 'Linux'
-        shell: bash
-        run: ./tools/smoke.sh release
+          cmake --preset debug
+          cmake --build --preset debug
+          ctest --test-dir build/debug --output-on-failure
+      - name: Release build and tests
+        run: |
+          cmake --preset release
+          cmake --build --preset release
+          ctest --test-dir build/release --output-on-failure
+      - name: iOS setup regression tests
+        run: python3 tests/test_ios_setup.py
+      - name: Build Matte Overlay
+        run: bash tools/matte-overlay/build.sh
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build iPhone simulator app
+        run: |
+          cmake --preset ios-iphone-simulator-debug
+          cmake --build --preset ios-iphone-simulator-debug --config Debug
+      - name: Build iPhone Menu Studio
+        run: ./scripts/menu_demo.sh build ios-phone

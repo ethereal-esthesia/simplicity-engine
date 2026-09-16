@@ -1,7 +1,5 @@
-# Platform testing
+# iPhone testing
 
-Current targets: macOS, Linux, Windows, iPhone and Android phone.
-
-Use `scripts/dev-setup.sh --target ios` or `--target android` to prepare mobile environments.
-Run `scripts/menu_demo.sh test ios-phone` or `test android-phone`, then use `run` for a visual check.
-Desktop setup uses `--target macos`, `linux`, or `windows`; add `--vm` on a Mac to use UTM.
+Prepare Xcode and an iOS runtime with [developer setup](../developer-setup.md).
+Use `scripts/dev-setup.sh --target ios`, then `scripts/menu_demo.sh test ios-phone`.
+Use `scripts/menu_demo.sh run ios-phone` for visual checks. See [testing](../../TESTING.md).

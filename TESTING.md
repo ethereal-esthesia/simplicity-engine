@@ -1,92 +1,35 @@
 # Testing
 
-This project uses an automated smoke-first approach for every change, with optional manual visual verification.
+On macOS, configure and build each preset before running its tests:
 
-## Local Smoke Test
-
-Primary path (recommended):
-
-```bash
+```sh
 cmake --preset debug
 cmake --build --preset debug
-./tools/smoke.sh debug
-```
-
-```bash
+ctest --test-dir build/debug --output-on-failure
 cmake --preset release
 cmake --build --preset release
-./tools/smoke.sh release
+ctest --test-dir build/release --output-on-failure
+python3 tests/test_ios_setup.py
 ```
 
-Full test suite (broader than smoke):
+CTest covers shared menu behavior, a headless Menu Studio run, SDL initialization,
+and RNG smoke/vector checks. `./scripts/menu_demo.sh test host` also verifies
+native AppKit menu construction, state, and dispatch.
 
-```bash
-cmake --preset release
-cmake --build --preset release
-./tools/test.sh release
+For iPhone simulator builds and runtime self-tests:
+
+```sh
+./scripts/run_ios_iphone.sh --build-only
+./scripts/menu_demo.sh test ios-phone
 ```
 
-Optional manual visual check:
+A simulator self-test must print `MENU_SELF_TEST=PASS`. iOS binaries are tested
+inside the simulator, not through host CTest.
 
-Debug:
+For visual checks, run `./scripts/run.sh` (dark background and centered mint mark),
+`./scripts/menu_demo.sh run host`, and `./scripts/menu_demo.sh run ios-phone`.
+Verify menu interaction and clean exit. See the
+[Matte Overlay guide](tools/matte-overlay/README.md) for its checks.
 
-```bash
-./scripts/run.sh
-```
-
-Release:
-
-```bash
-./scripts/run.sh --preset release
-```
-
-Expected behavior:
-- A window titled `Simplicity Engine - Hello Pixel` opens.
-- Background is dark.
-- A small mint mark appears at the center.
-- Closing the window exits cleanly.
-
-## Headless SDL Init Smoke Test
-
-Smoke tests are label-based (`smoke`) and can be run in one command:
-
-```bash
-cmake --preset release
-cmake --build --preset release
-./tools/smoke.sh release
-```
-
-Current smoke tests:
-- `smoke_sdl_init`: verifies SDL video subsystem initialization in no-display mode (`dummy` video driver).
-- `smoke_fast_rng`: verifies deterministic RNG output parity with Serenity vectors.
-
-Additional non-smoke tests:
-- `test_fast_rng_vectors` (`rng`, `full` labels): broader deterministic vector parity and behavioral checks for RNG.
-
-## Container Cross-Platform Build Smoke Test
-
-Build image:
-
-```bash
-docker build -t simplicity-engine-build .
-```
-
-Run cross-platform build script:
-
-```bash
-docker run --rm -it -v "$PWD:/workspace" simplicity-engine-build ./tools/build-in-container.sh
-```
-
-Expected artifacts:
-- `build/linux-debug/hello_pixel`
-- `build/linux-release/hello_pixel`
-- `build/windows-debug/hello_pixel.exe`
-- `build/windows-release/hello_pixel.exe`
-
-## Common menus and developer setup
-
-See [Menu Studio validation](docs/menu.md) and [developer setup](docs/developer-setup.md).
-Run `python3 tests/test_dev_setup.py` for setup orchestration regression checks.
-Run `./scripts/menu_demo.sh test host` for the desktop demo and native menu test.
-
-Run `python3 tests/test_utm_setup.py` for VM export and existing-disk preservation checks.
+GitHub CI covers macOS tests and iPhone simulator compilation; nightly jobs cover
+macOS arm64 and x86_64. Electron validation is pending its implementation.

@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     }
 
     constexpr bool starts_fullscreen =
-#if defined(SDL_PLATFORM_IOS) || defined(SDL_PLATFORM_ANDROID)
+#if defined(SDL_PLATFORM_IOS)
         true;
 #else
         false;

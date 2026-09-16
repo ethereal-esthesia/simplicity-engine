@@ -1,5 +1,13 @@
 # Simplicity Engine Spec: What Is an Engine?
 
+## Implementation direction
+
+The common engine language is C++, compiled to WebAssembly for desktop hosts.
+Use WebKit/WKWebView on macOS only and Electron for other desktops. Keep reusable
+engine logic in the shared core and platform services behind thin host adapters.
+These hosts and the Wasm build are planned; current code is the native Apple
+foundation. See the [platform roadmap](platform-targets-todo.md).
+
 ## Purpose
 Define what makes `simplicity-engine` an engine (not just a library or app scaffold), and establish a minimum bar for architecture decisions.
 

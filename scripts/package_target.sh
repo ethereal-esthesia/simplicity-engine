@@ -13,11 +13,7 @@ Usage: ./scripts/package_target.sh <target> [options]
 
 Package a supported target through one public entrypoint.
 
-Targets wired now:
-  linux-x64, linux-arm64, macos-arm64, macos-x64, windows-x64
-
-Targets planned next:
-  ios, android, fireos, chromeos
+Targets: macos-arm64, macos-x64
 EOF
 }
 
@@ -76,28 +72,11 @@ if [[ -z "$TARGET" ]]; then
 fi
 
 case "$TARGET" in
-  linux-x64)
-    exec env ARCH_LABEL=x64 "${SCRIPT_DIR}/package_linux.sh" "${PASS_THROUGH[@]}"
-    ;;
-  linux-arm64)
-    exec env ARCH_LABEL=arm64 "${SCRIPT_DIR}/package_linux.sh" "${PASS_THROUGH[@]}"
-    ;;
   macos-arm64)
-    exec env ARCH_LABEL=arm64 "${SCRIPT_DIR}/package_macos.sh" "${PASS_THROUGH[@]}"
+    exec env ARCH_LABEL=arm64 "${SCRIPT_DIR}/package_macos.sh" ${PASS_THROUGH[@]+"${PASS_THROUGH[@]}"}
     ;;
   macos-x64)
-    exec env ARCH_LABEL=x64 "${SCRIPT_DIR}/package_macos.sh" "${PASS_THROUGH[@]}"
-    ;;
-  windows-x64)
-    if command -v pwsh >/dev/null 2>&1; then
-      exec pwsh -NoProfile -File "${SCRIPT_DIR}/package_windows_zip.ps1" "${PASS_THROUGH[@]}"
-    fi
-    echo "Packaging windows-x64 needs PowerShell (`pwsh`) on this host." >&2
-    exit 1
-    ;;
-  ios|android|fireos|chromeos)
-    echo "Packaging for ${TARGET} is still a stub." >&2
-    exit 1
+    exec env ARCH_LABEL=x64 "${SCRIPT_DIR}/package_macos.sh" ${PASS_THROUGH[@]+"${PASS_THROUGH[@]}"}
     ;;
   *)
     echo "Unknown package target: ${TARGET}" >&2

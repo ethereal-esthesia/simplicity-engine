@@ -5,6 +5,9 @@ if(POLICY CMP0135)
 endif()
 
 project(simplicity_engine LANGUAGES C CXX)
+if(NOT APPLE)
+  message(FATAL_ERROR "Native builds support Apple platforms only. C++/Wasm with macOS WebKit and other-desktop Electron hosts is planned; see README.md.")
+endif()
 # Resolve the target toolchain before deciding which OS languages to enable.
 if(APPLE)
   enable_language(OBJCXX)
@@ -16,11 +19,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(ANDROID)
-  set(SIMPLICITY_ENGINE_APP_TARGET main)
-else()
-  set(SIMPLICITY_ENGINE_APP_TARGET hello_pixel)
-endif()
+set(SIMPLICITY_ENGINE_APP_TARGET hello_pixel)
 
 set(
   SIMPLICITY_ENGINE_IOS_BUNDLE_IDENTIFIER
@@ -31,13 +30,8 @@ set(
 include(FetchContent)
 
 set(SDL_TEST OFF CACHE BOOL "Disable SDL tests" FORCE)
-if(ANDROID)
-  set(SDL_SHARED ON CACHE BOOL "Build SDL shared library for Android" FORCE)
-  set(SDL_STATIC OFF CACHE BOOL "Disable SDL static library for Android" FORCE)
-else()
-  set(SDL_SHARED OFF CACHE BOOL "Disable SDL shared library for self-contained binaries" FORCE)
-  set(SDL_STATIC ON CACHE BOOL "Build SDL static library for self-contained binaries" FORCE)
-endif()
+set(SDL_SHARED OFF CACHE BOOL "Disable SDL shared library" FORCE)
+set(SDL_STATIC ON CACHE BOOL "Build SDL static library" FORCE)
 
 FetchContent_Declare(
   SDL3
@@ -58,39 +52,21 @@ set_target_properties(simplicity_menu_model PROPERTIES POSITION_INDEPENDENT_CODE
 add_library(simplicity_menu src/menu/menu_touch.cpp)
 target_link_libraries(simplicity_menu PUBLIC simplicity_menu_model SDL3::SDL3)
 set_target_properties(simplicity_menu PROPERTIES POSITION_INDEPENDENT_CODE ON)
-if(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR ANDROID)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
   target_sources(simplicity_menu PRIVATE src/menu/menu_mobile.cpp)
 elseif(APPLE)
   target_sources(simplicity_menu PRIVATE src/menu/menu_macos.mm)
   target_compile_options(simplicity_menu PRIVATE "$<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>")
   target_link_libraries(simplicity_menu PRIVATE "-framework AppKit")
-elseif(WIN32)
-  target_sources(simplicity_menu PRIVATE src/menu/menu_windows.cpp)
-  target_link_libraries(simplicity_menu PRIVATE user32)
-elseif(UNIX)
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(GTK3 REQUIRED IMPORTED_TARGET gtk+-3.0)
-  target_sources(simplicity_menu PRIVATE src/menu/menu_linux.cpp)
-  target_link_libraries(simplicity_menu PRIVATE PkgConfig::GTK3)
-  # SDL 3.2.8's Unix tray object exports GTK function-pointer globals (e.g.
-  # g_object_ref). Keep static SDL internals out of the executable's dynamic
-  # symbol table so they cannot interpose GTK/GObject functions at runtime.
-  target_link_options(simplicity_menu INTERFACE "LINKER:--exclude-libs,libSDL3.a")
-else()
-  message(FATAL_ERROR "No menu backend for this platform")
 endif()
 
-if(ANDROID)
-  add_library(${SIMPLICITY_ENGINE_APP_TARGET} SHARED ${SIMPLICITY_APP_SOURCE})
-else()
-  add_executable(${SIMPLICITY_ENGINE_APP_TARGET} ${SIMPLICITY_APP_SOURCE})
-endif()
+add_executable(${SIMPLICITY_ENGINE_APP_TARGET} ${SIMPLICITY_APP_SOURCE})
 
 target_link_libraries(${SIMPLICITY_ENGINE_APP_TARGET} PRIVATE SDL3::SDL3)
 if(SIMPLICITY_MENU_DEMO)
   target_link_libraries(${SIMPLICITY_ENGINE_APP_TARGET} PRIVATE simplicity_menu)
 endif()
-if(NOT ANDROID AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
   add_executable(menu_demo demos/menu_demo.cpp)
   target_link_libraries(menu_demo PRIVATE simplicity_menu)
   if(APPLE)
@@ -110,11 +86,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
       XCODE_ATTRIBUTE_INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents "YES"
       XCODE_ATTRIBUTE_INFOPLIST_KEY_UISupportedInterfaceOrientations "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight")
 endif()
-if(WIN32)
-  set_target_properties(${SIMPLICITY_ENGINE_APP_TARGET} PROPERTIES WIN32_EXECUTABLE TRUE)
-endif()
 
-if(NOT ANDROID)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
   add_executable(smoke_sdl_init tests/smoke_sdl_init.cpp)
   add_executable(smoke_fast_rng tests/smoke_fast_rng.cpp)
   add_executable(test_fast_rng_vectors tests/test_fast_rng_vectors.cpp)
@@ -134,7 +107,7 @@ if(APPLE AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
   target_link_libraries(macos_bookmark_probe PRIVATE "-framework AppKit" "-framework Foundation")
 endif()
 
-if(NOT ANDROID)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
   enable_testing()
   add_executable(test_menu tests/test_menu.cpp)
   target_link_libraries(test_menu PRIVATE simplicity_menu)
@@ -144,15 +117,7 @@ if(NOT ANDROID)
     add_test(NAME menu_demo_smoke COMMAND menu_demo --self-test)
     set_tests_properties(menu_demo_smoke PROPERTIES ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software" LABELS "menu;smoke")
   endif()
-  if(WIN32)
-    add_test(
-      NAME smoke_sdl_init
-      COMMAND
-        ${CMAKE_COMMAND} -E env "PATH=$<TARGET_FILE_DIR:SDL3::SDL3>;$ENV{PATH}"
-        $<TARGET_FILE:smoke_sdl_init>)
-  else()
-    add_test(NAME smoke_sdl_init COMMAND smoke_sdl_init)
-  endif()
+  add_test(NAME smoke_sdl_init COMMAND smoke_sdl_init)
   set_tests_properties(smoke_sdl_init PROPERTIES LABELS smoke)
   add_test(NAME smoke_fast_rng COMMAND smoke_fast_rng)
   set_tests_properties(smoke_fast_rng PROPERTIES LABELS smoke)
