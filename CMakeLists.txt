@@ -6,7 +6,7 @@ endif()
 
 project(simplicity_engine LANGUAGES C CXX)
 if(NOT APPLE)
-  message(FATAL_ERROR "Native builds support Apple platforms only. C++/Wasm with macOS WebKit and other-desktop Electron hosts is planned; see README.md.")
+  message(FATAL_ERROR "Native builds support Apple platforms only. Use the Rust/Wasm/Tauri build for the new application direction; see README.md.")
 endif()
 # Resolve the target toolchain before deciding which OS languages to enable.
 if(APPLE)

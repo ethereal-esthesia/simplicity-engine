@@ -1,4 +1,17 @@
-# Apple developer setup
+# Developer setup
+
+## Rust/Wasm and Tauri
+
+Install Rust with rustup, Node.js 22+, and Apple command-line tools on macOS.
+Run `make setup`, then `make test` and `make`. Use `make run` to launch the app and
+`make bundle` for a macOS app bundle. Cargo.lock and package-lock.json pin dependencies.
+The Wasm target is `wasm32-unknown-unknown`; the Tauri host builds for the native OS.
+
+Other Tauri platforms require their own [prerequisites](https://v2.tauri.app/start/prerequisites/)
+and are not yet validated here. `make ios-build` below still builds the retained
+SDL simulator app.
+
+## Retained Apple demos
 
 Use macOS with Apple command-line developer tools, CMake 3.25+ for the presets,
 Ninja, and Python 3. Install CMake and Ninja with `brew install cmake ninja` or
@@ -29,6 +42,6 @@ Build and testing are separate from setup:
 ./scripts/menu_demo.sh test ios-phone
 ```
 
-Electron setup will be documented when its implementation lands. See the
+See the
 [platform roadmap](platform-targets-todo.md). Existing local VM images and SDK
 installations are outside the repository and are not managed by these scripts.

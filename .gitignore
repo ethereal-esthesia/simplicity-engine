@@ -7,3 +7,9 @@ logs/
 
 __pycache__/
 *.pyc
+
+# Rust/Tauri build products and installed tooling
+/target/
+/node_modules/
+/web/generated/
+/src-tauri/gen/

@@ -1,0 +1,16 @@
+{
+  "name": "simplicity-engine",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "build": "tauri build --no-bundle -- --locked",
+    "dev": "tauri dev",
+    "bundle": "tauri build --bundles app -- --locked",
+    "test": "npm run build:wasm && cargo test --locked -p simplicity-core && node --test tests/wasm.test.mjs",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4"
+  }
+}

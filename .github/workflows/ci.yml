@@ -40,3 +40,28 @@ jobs:
           cmake --build --preset ios-iphone-simulator-debug --config Debug
       - name: Build iPhone Menu Studio
         run: ./scripts/menu_demo.sh build ios-phone
+  tauri-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Prepare Rust and npm
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --target wasm32-unknown-unknown
+          rustup default stable
+          npm ci
+      - name: Check Rust formatting and core behavior
+        run: |
+          cargo fmt --all -- --check
+          make test
+      - name: Build Tauri app bundle
+        run: make bundle
+      - name: Archive app with executable permissions
+        run: ditto -c -k --sequesterRsrc --keepParent "target/release/bundle/macos/Simplicity Engine.app" target/simplicity-tauri-macos.zip
+      - uses: actions/upload-artifact@v6
+        with:
+          name: tauri-macos
+          path: target/simplicity-tauri-macos.zip

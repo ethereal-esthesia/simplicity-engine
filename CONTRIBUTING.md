@@ -1,10 +1,13 @@
 # Contributing
 
-The common engine language is C++, compiled to WebAssembly. The desktop direction
-is WebKit/WKWebView on macOS only and Electron for other desktops. Keep engine
-logic shared and host adapters thin. The Wasm pipeline and both hosts are planned;
-the existing macOS and iPhone/iOS native demos remain the buildable foundation.
-See the [roadmap](docs/platform-targets-todo.md).
+Use **Rust → WebAssembly** for new shared engine logic and simple conversions.
+Tauri is the sole app host. Keep core logic independent of OS and Tauri APIs; use
+thin web adapters and native Rust host services. Keep existing Apple code buildable
+until each replacement passes behavioral checks. See the [roadmap](docs/platform-targets-todo.md).
+
+For Rust/Tauri changes, run `make test`, `cargo fmt --all -- --check`, and `make`.
+Commit Cargo.lock and package-lock.json; do not commit generated Wasm or build output.
+Test in the target Tauri webview before claiming platform compatibility.
 
 Use [Apple developer setup](docs/developer-setup.md). Before a pull request, build
 Debug and Release and run CTest for both:

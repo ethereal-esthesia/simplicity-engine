@@ -25,7 +25,7 @@ Working name: `MovableFileHandle`.
 
 ## Platform Backends
 
-Electron integration is deferred until the compatibility host exists.
+Tauri file access integration is deferred until the Rust host service is implemented.
 - [ ] macOS: prefer security-scoped `NSURL` bookmark data for user-selected files/folders.
 - [ ] macOS: use non-security-scoped bookmark data where sandbox permissions are not needed.
 - [ ] macOS: treat file reference URLs as runtime-only helpers, not durable serialized identity.

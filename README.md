@@ -1,63 +1,83 @@
 # Simplicity Engine
 
-Fluid motion graphics with a low learning curve. Current development focuses on
-a shared C++ core compiled to WebAssembly, with WebKit on macOS and Electron
-for compatibility on other desktops.
+Fluid motion graphics with a low learning curve, built around **Rust → WebAssembly
+and Tauri**.
 
-## Direction
+## Direction and current status
 
-- **Common language:** C++ for engine logic, compiled to WebAssembly (Wasm) so the
-  same core can run in both desktop hosts.
-- **macOS host:** WebKit via WKWebView. WebKit is the Mac-only host choice.
-- **Other desktop hosts:** Electron for compatibility, consuming the same Wasm core.
-- **Current code:** native macOS and iPhone/iOS SDL demos, AppKit and touch menus,
-  a macOS bookmark probe, and Matte Overlay remain as the Apple foundation.
-- **Implementation status:** the Wasm build, WebKit host, and Electron host are
-  planned. None is implemented or packaged yet; the commands below run the existing
-  native Apple demos.
-- Native Windows, Linux, Android, container builds, and VM provisioning have been
-  removed from `main`. Broader platform work is preserved on
-  [`codex/archive-multiplatform-2026-09-15`](https://github.com/ethereal-esthesia/simplicity-engine/tree/codex/archive-multiplatform-2026-09-15).
+- Write new shared engine logic and straightforward conversions in **Rust**, and
+  compile it to **WebAssembly (Wasm)**. Keep one implementation across hosts.
+- Use **Tauri 2** for application windows and native services. Its native Rust
+  host and the Rust code compiled to Wasm are separate build targets.
+- Keep JavaScript thin: load Wasm, forward input, and connect drawing to web APIs.
+  Keep OS integration in Tauri instead of putting it in the portable core.
+- Hello Pixel now has a small Tauri host and dependency-free Rust/Wasm core.
+  Rust provides its centered mark geometry and palette; a Canvas adapter draws it.
+- The existing C++/SDL macOS and iPhone demos, menu API, bookmark probe, and Swift
+  Matte Overlay remain available while features migrate. They are not yet ported.
 
-See the [platform roadmap](docs/platform-targets-todo.md) for priorities and the
-[engine definition](docs/engine-definition.md) for the longer-term runtime goals.
+Tauri is the sole planned app host. There is no Electron dependency or build path.
+Tauri supports macOS, Windows, Linux, iOS/iPadOS, and Android, but this repository's
+new host is currently validated on macOS only. Mobile projects, signing, and other
+platform packages still need setup and testing; framework coverage is not a claim
+that this app already ships on every platform.
 
-## Build on macOS
+See the [roadmap](docs/platform-targets-todo.md) and
+[engine definition](docs/engine-definition.md). Earlier platform code is preserved
+on [the archive branch](https://github.com/ethereal-esthesia/simplicity-engine/tree/codex/archive-multiplatform-2026-09-15).
 
-Install Apple's command-line developer tools, CMake 3.21+, and Ninja. The checked-in
-presets require CMake 3.25+ (preset schema version 6). Configure downloads SDL 3.2.8.
+## Build and run Tauri
+
+On macOS, install Apple's command-line developer tools, Rust through rustup, and
+Node.js 22 or later. See [developer setup](docs/developer-setup.md).
 
 ```sh
-xcode-select --install
-brew install cmake ninja
-./scripts/dev-setup.sh --target macos --check
-cmake --preset debug
-cmake --build --preset debug
-ctest --test-dir build/debug --output-on-failure
-./scripts/run.sh
+make setup       # install locked npm dependencies and the Rust Wasm target
+make             # build Wasm and the release Tauri executable
+make test        # native Rust tests and execution of the compiled Wasm
+make run         # launch Tauri in development mode
+make bundle      # build the macOS .app
 ```
 
-Use the `release` preset for optimized builds. Menu Studio:
+The release executable is `target/release/simplicity-app`; the macOS app is
+`target/release/bundle/macos/Simplicity Engine.app`. The demo opens a dark window
+with a centered mint mark. Generated Wasm lives in `web/generated/` and is rebuilt
+automatically before Tauri runs or builds. Node is build/test tooling, not an app
+runtime dependency. Equivalent npm commands are available in `package.json`.
+
+## Repository layout
+
+| Path | Purpose |
+|---|---|
+| `crates/engine-core/` | Portable Rust logic compiled natively for tests and to Wasm |
+| `src-tauri/` | Native Tauri application host |
+| `web/` | HTML, CSS, and a small Wasm/Canvas adapter |
+| `src/`, `include/`, `demos/` | Retained C++/SDL Apple implementation |
+| `tools/matte-overlay/` | Standalone Swift macOS utility |
+| `scripts/`, `tests/`, `docs/` | Build entrypoints, checks, and project references |
+
+## Retained Apple builds
+
+Install CMake 3.25+ and Ninja (`brew install cmake ninja`). Configuration downloads
+SDL 3.2.8; these builds are independent of the Tauri app.
 
 ```sh
-./scripts/menu_demo.sh run host
+make apple-test
+./scripts/run.sh
 ./scripts/menu_demo.sh test host
 ```
 
-## iPhone simulator
-
-Install full Xcode and an iOS simulator runtime, then select Xcode as the active
-developer directory. The simulator presets target Apple silicon Macs.
+For the iPhone simulator, install full Xcode and an iOS runtime. The existing
+simulator presets target Apple silicon Macs:
 
 ```sh
 ./scripts/dev-setup.sh --target ios
-./scripts/run_ios_iphone.sh
+make ios-build
 ./scripts/menu_demo.sh test ios-phone
 ```
 
-See [developer setup](docs/developer-setup.md), [testing](TESTING.md), and the
-[menu API](docs/menu.md). iOS device signing and App Store distribution are not
-configured by these simulator commands.
+These commands build the retained SDL iPhone app, not a Tauri mobile package.
+See [testing](TESTING.md) and the [menu API](docs/menu.md).
 
 ## macOS Matte Overlay
 
@@ -95,13 +115,6 @@ See [probe documentation](probes/README.md).
 
 ## GitHub builds and releases
 
-CI builds and tests macOS and builds the iPhone simulator demos. Nightly checks
-cover macOS arm64 and x86_64. Tags matching `v*` package macOS Hello Pixel archives
-and publish a GitHub release. Wasm host packaging will be added with its implementation;
-no other platform binaries are currently published.
-
-```sh
-./scripts/package_target.sh macos-arm64
-./scripts/release.sh                # show latest release tag
-./scripts/release.sh v0.1.0         # create and push a release tag
-```
+CI tests the Rust core natively and as Wasm, builds a macOS Tauri app, and retains
+the Apple native checks. Tag-driven releases still publish the existing macOS SDL
+archives; Tauri release distribution and signing are not configured yet.

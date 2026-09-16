@@ -2,11 +2,11 @@
 
 ## Implementation direction
 
-The common engine language is C++, compiled to WebAssembly for desktop hosts.
-Use WebKit/WKWebView on macOS only and Electron for other desktops. Keep reusable
-engine logic in the shared core and platform services behind thin host adapters.
-These hosts and the Wasm build are planned; current code is the native Apple
-foundation. See the [platform roadmap](platform-targets-todo.md).
+Use Rust for shared engine logic and straightforward conversions, compiling the
+portable core to WebAssembly. Tauri is the app host across intended platforms.
+Keep web rendering/input adapters small and native services in the Tauri Rust host.
+Hello Pixel has an initial Rust/Wasm/Tauri implementation; the existing Apple demos
+remain during migration. See the [roadmap](platform-targets-todo.md).
 
 ## Purpose
 Define what makes `simplicity-engine` an engine (not just a library or app scaffold), and establish a minimum bar for architecture decisions.

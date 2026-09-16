@@ -8,7 +8,7 @@ one model. Menu Studio in demos/menu_demo.cpp demonstrates that model.
 macOS uses AppKit. iPhone uses SDL-drawn TouchMenu; `--touch-menu` previews
 that interface on macOS. The mobile text renderer is basic ASCII and long menus
 do not scroll; accessibility integration remains future work. The matte overlay
-has not yet been migrated into this API. WebKit and Electron host menu adapters are planned around the shared C++ core.
+has not yet been migrated into this API. Tauri menu adapters and a shared Rust model are planned; this API is still C++.
 
 See [developer setup](developer-setup.md). Run `scripts/menu_demo.sh run host`
 to open Menu Studio; use M/Return/right-click or the menu button. Palette choices,

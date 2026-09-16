@@ -1,5 +1,16 @@
 # Testing
 
+## Rust/Wasm/Tauri
+
+Run `make test` for native Rust tests and actual Wasm execution under Node.
+Run `make` to compile the native Tauri host with the generated Wasm embedded.
+Run `make run` for a webview check: a dark background with a centered 8-pixel mint
+mark, still centered after resizing. Engine load errors must be visible.
+`make bundle` builds the macOS app; test its launch separately from development.
+Other Tauri platforms and mobile packaging are not validated yet.
+
+## Retained Apple demos
+
 On macOS, configure and build each preset before running its tests:
 
 ```sh
@@ -32,4 +43,4 @@ Verify menu interaction and clean exit. See the
 [Matte Overlay guide](tools/matte-overlay/README.md) for its checks.
 
 GitHub CI covers macOS tests and iPhone simulator compilation; nightly jobs cover
-macOS arm64 and x86_64. Electron validation is pending its implementation.
+macOS arm64 and x86_64. Tauri/Wasm checks run separately from the retained SDL builds.

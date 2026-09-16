@@ -1,0 +1,4 @@
+[workspace]
+members = ["crates/engine-core", "src-tauri"]
+default-members = ["crates/engine-core"]
+resolver = "2"

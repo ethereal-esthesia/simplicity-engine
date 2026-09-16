@@ -1,5 +1,9 @@
 # Scripts
 
+The default app uses `make` / npm commands. `build-wasm.mjs` builds only the
+portable Rust crate and copies the resulting Wasm into the web assets.
+The shell entrypoints below are for the retained Apple demos.
+
 - `dev-setup.sh --target macos|ios [--check]`: verify Apple tools; prepare an iPhone simulator.
 - `run.sh`: build and launch the macOS demo.
 - `build_target.sh` / `run_target.sh`: route `macos` or `ios-phone`.
