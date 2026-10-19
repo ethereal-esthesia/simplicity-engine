@@ -13,7 +13,7 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Install Ninja
         run: brew install ninja
       - name: Debug build and tests
@@ -33,7 +33,7 @@ jobs:
   ios:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Build iPhone simulator app
         run: |
           cmake --preset ios-iphone-simulator-debug
@@ -43,7 +43,7 @@ jobs:
   tauri-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
