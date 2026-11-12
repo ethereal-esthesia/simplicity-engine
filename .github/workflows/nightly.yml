@@ -6,7 +6,31 @@ on:
   workflow_dispatch:
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.check.outputs.has_changes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes in last 24 hours
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          elif git log --oneline --since='24 hours ago' | grep -q .; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No changes in the last 24 hours, skipping."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
   macos-all-tests:
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
     strategy:
       fail-fast: false
       matrix:
