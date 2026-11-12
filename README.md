@@ -21,10 +21,14 @@ Tauri supports macOS, Windows, Linux, iOS/iPadOS, and Android, but this reposito
 new host has been run and visually checked on macOS. GitHub Actions builds
 [test installers](docs/test-installers.md) for desktop platforms, Android, and iOS
 Simulator. These builds still require testing on target devices; iPhone device
-signing and production distribution are not configured.
+signing in CI and production distribution are not configured. You can test on your
+own iPhone/iPad using a **free Apple Account in Xcode**, without a paid membership
+or jailbreak. Personal Team provisioning expires after seven days; rebuild and
+reinstall to continue testing. See [device setup and signing instructions](docs/test-installers.md#physical-iphoneipad-testing-free-apple-account).
 
-See the [roadmap](docs/platform-targets-todo.md) and
-[engine definition](docs/engine-definition.md). Earlier platform code is preserved
+See the [roadmap](docs/platform-targets-todo.md),
+[engine definition](docs/engine-definition.md), and
+[overlay passthrough direction](docs/overlay-passthrough-direction.md). Earlier platform code is preserved
 on [the archive branch](https://github.com/ethereal-esthesia/simplicity-engine/tree/codex/archive-multiplatform-2026-09-15).
 
 ## Build and run Tauri
@@ -121,3 +125,20 @@ the Apple native checks. The separate [Test installers workflow](docs/test-insta
 produces desktop installers, Android debug APKs, and iOS Simulator apps as downloadable
 artifacts. Tag-driven releases still publish the existing macOS SDL archives; Tauri
 production signing and release distribution are not configured yet.
+
+## When requesting a packaged build
+
+Specify the OS, CPU architecture, and whether the build is for personal testing or
+distribution. Follow [the packaging checklist](docs/test-installers.md#packaged-build-requests).
+For iPhone/iPad, distinguish a simulator download from a physical-device build.
+Use the local signing setup below for personal devices; an unsigned simulator app
+cannot be installed on an iPhone.
+
+```sh
+bash scripts/ios-device.sh setup     # remember your team locally after Xcode login
+bash scripts/ios-device.sh init
+bash scripts/ios-device.sh dev --open
+```
+
+Apple credentials and signing keys stay in Xcode/macOS Keychain. The script stores
+only the team ID in ignored `local/` storage for subsequent builds.

@@ -52,9 +52,73 @@ xcrun simctl install booted '/path/to/Simplicity Engine.app'
 xcrun simctl launch booted dev.simplicityengine.desktop
 ```
 
-A physical iPhone build requires an Apple development team, signing certificate,
-and provisioning profile (or a TestFlight distribution setup). Those are not
-configured, so the workflow does not pretend an unsigned IPA is installable.
+## Physical iPhone/iPad testing (free Apple Account)
+
+You do not need a jailbreak or paid Apple Developer Program membership to test
+on your own device. You do need a free Apple Account signed into Xcode so Apple
+can provision and sign the native app. Personal Team profiles expire after seven
+days; rebuild and reinstall afterward. This is local device testing, not a
+shareable unsigned IPA or TestFlight distribution. See
+[Apple membership comparison](https://developer.apple.com/support/compare-memberships/).
+
+1. Install full Xcode, launch it to finish component installation, and select it
+   as the active developer directory if necessary:
+   `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`.
+2. In **Xcode > Settings > Apple Accounts** (Accounts in some versions), sign in
+   with your Apple Account. Select your Personal Team. Use **Manage Certificates**
+   to create an **Apple Development** certificate if none exists. Xcode and macOS
+   Keychain retain the account and private key; do not paste passwords into chat.
+3. Connect and unlock your iPhone/iPad, accept **Trust This Computer**, and enable
+   **Settings > Privacy & Security > Developer Mode**, restarting when prompted.
+   If the option is missing, pair the device with Xcode first. See
+   [Apple device setup](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device).
+4. Find the 10-character **Team ID (Organizational Unit)**. If Xcode does not show it in account details,
+   open **Keychain Access**, select your Apple Development certificate, and read
+   its **Details > Subject Name > Organizational Unit** value. Do not export the
+   private key. Run these commands from the repository root:
+
+   ```sh
+   npm ci
+   bash scripts/ci/prepare-ios-tools.sh
+   rustup target add wasm32-unknown-unknown aarch64-apple-ios
+   bash scripts/ios-device.sh setup
+   bash scripts/ios-device.sh init
+   bash scripts/ios-device.sh dev --open
+   ```
+
+5. Keep the terminal command running. In the generated Xcode project select the
+   iOS app target, then **Signing & Capabilities**, enable **Automatically manage
+   signing**, and select your Personal Team. Select the connected device as the
+   run destination and press **Run**. If the bundle identifier is unavailable,
+   choose a unique identifier in a local Tauri config and pass it with `--config`
+   to both `init` and `dev`; do not change the shared identifier just for your account.
+6. If prompted on the device, trust your developer under **Settings > General >
+   VPN & Device Management**. Confirm the app launches and displays the mint
+   Hello Pixel graphic. Report the step and error if anything fails, without
+   sharing account passwords or private keys.
+
+The setup script saves only the team ID to `local/apple-development-team`
+(ignored by Git, file mode 600). Its `init`, `dev`, and `build` commands load that
+value as `APPLE_DEVELOPMENT_TEAM`; it never stores or reads your Apple password.
+Delete that file to forget the selection. Xcode may still request account renewal
+or Keychain access. CI signing and TestFlight distribution need separate setup.
+These instructions still need end-to-end validation on a physical device.
+
+## Packaged-build requests
+
+When preparing a requested package:
+
+- Determine OS, CPU, and personal testing versus distribution from the request;
+  ask only for missing details that change the package.
+- Build or select an artifact for the requested revision, verify the job succeeded,
+  and include its commit, checksum, install instructions, and signing limitations.
+- For iOS, explicitly distinguish simulator versus physical device. For a personal
+  device, reuse the saved team through `scripts/ios-device.sh`; if setup is missing,
+  point the user to the steps above. Never label a simulator ZIP or unsigned IPA
+  as an installable physical-device package. Use Xcode Run for free-account testing.
+- For distribution, identify the required signing/provisioning setup rather than
+  implying that free Personal Team testing provides a distributable release.
+- Report build success separately from actual installation and launch verification.
 
 ## Local commands
 
@@ -71,3 +135,35 @@ Install platform dependencies first; see
 [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 For the exact mobile initialization and build commands, see
 [the workflow](../.github/workflows/test-installers.yml).
+
+## Local simulator testing and Xcode build errors
+
+Simulator testing does not require an Apple Account or the device setup script.
+Install an iOS Simulator runtime in Xcode Settings > Components, then run:
+
+```sh
+npm run tauri -- ios init
+node scripts/configure-ios-xcode.mjs
+npm run tauri -- ios dev --open
+```
+
+Keep the terminal running and select a specific iPhone simulator in Xcode before
+pressing Run. If Xcode reports `npm: command not found`, rerun
+`node scripts/configure-ios-xcode.mjs` from the repository root. This configures
+the generated build phase to find this Mac's Node installation and Rust tooling.
+Rerun it after regenerating the project or changing Node installations. The
+`ios-device.sh` wrapper applies it automatically.
+
+If Run/⌘R fails with `failed to read CLI options` and `Connection refused`,
+Xcode is pointing at an ended Tauri CLI session. Stop the old `ios dev --open`
+command with Ctrl-C, rerun `npm run tauri -- ios dev --open`, and leave that
+terminal running while using Xcode. Avoid running a second Tauri iOS build/dev
+command concurrently: it can replace the connection settings used by Xcode.
+After a command-line build, restart the `--open` session before using ⌘R.
+
+If Xcode stops in `dyld` with `Library not loaded: ...debug.dylib` and
+`Trying to load an unsigned library`, rerun `node scripts/configure-ios-xcode.mjs`
+and rebuild. The helper sets `ENABLE_DEBUG_DYLIB=NO` on the app target so debug
+code is linked into the executable. This follows Apple's supported
+[debug layout opt-out](https://developer.apple.com/documentation/xcode/understanding-build-product-layout-changes);
+SwiftUI Previews for this app target are unavailable with this setting.

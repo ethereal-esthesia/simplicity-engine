@@ -2,6 +2,11 @@
 
 The default app uses `make` / npm commands. `build-wasm.mjs` builds only the
 portable Rust crate and copies the resulting Wasm into the web assets.
+`ios-device.sh setup|init|dev|build` saves and reuses a local Apple team selection
+for Tauri physical-device testing; credentials stay in Xcode/Keychain. See
+[device setup](../docs/test-installers.md#physical-iphoneipad-testing-free-apple-account).
+`ci/prepare-ios-tools.sh` reuses installed iOS tools, avoiding CocoaPods link conflicts.
+
 The shell entrypoints below are for the retained Apple demos.
 
 - `dev-setup.sh --target macos|ios [--check]`: verify Apple tools; prepare an iPhone simulator.

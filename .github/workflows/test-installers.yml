@@ -164,7 +164,7 @@ jobs:
           cache: npm
       - name: Prepare iOS toolchain
         run: |
-          brew install xcodegen cocoapods libimobiledevice
+          bash scripts/ci/prepare-ios-tools.sh
           rustup toolchain install stable --profile minimal
           rustup default stable
           rustup target add wasm32-unknown-unknown ${{ matrix.rust-target }}
