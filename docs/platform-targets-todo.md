@@ -69,8 +69,8 @@ platforms. Installation instructions live in [test-installers.md](test-installer
 
 - [x] Fix Intel iOS CI's CocoaPods installation conflict by reusing existing tools
   in `scripts/ci/prepare-ios-tools.sh`; local mocked checks passed.
-- [ ] Rerun GitHub Actions and confirm the Intel iOS simulator job passes. Its
-  previous failure occurred before compilation; additional failures remain possible.
+- The Intel iOS simulator CI job was removed because its GitHub-hosted runner is
+  no longer supported; the previous failure occurred before compilation.
 - [x] Fix Xcode's `npm: command not found` with
   `scripts/configure-ios-xcode.mjs`, configuring Node/npm and Rust tool paths.
 - [x] Apply that helper automatically through the device wrapper and document
@@ -91,7 +91,6 @@ platforms. Installation instructions live in [test-installers.md](test-installer
 - [ ] Test the GitHub Actions ARM64 iOS simulator artifact independently: extract
   the outer download and inner app ZIP, stop Xcode/Tauri development, drag the
   `.app` into the booted simulator, launch from Home Screen, and verify rendering.
-- [ ] Test the Intel iOS simulator package on a compatible Intel Mac after CI passes.
 - [ ] Test macOS Apple silicon DMG and zipped `.app` installation/launch.
 - [ ] Test macOS Intel DMG and zipped `.app` installation/launch.
 - [ ] Test Windows x64 NSIS EXE and MSI installation/launch.

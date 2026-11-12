@@ -50,6 +50,16 @@ with a centered mint mark. Generated Wasm lives in `web/generated/` and is rebui
 automatically before Tauri runs or builds. Node is build/test tooling, not an app
 runtime dependency. Equivalent npm commands are available in `package.json`.
 
+The standalone looping video player is kept in `tests/video-player/`, separate
+from Hello Pixel. Build it with `npm run video-player:build`, then run:
+
+```sh
+target/release/video-player /path/to/video.mp4
+```
+
+Video formats depend on the platform webview. Missing or unplayable paths are
+reported in the player window.
+
 ## Repository layout
 
 | Path | Purpose |
@@ -59,6 +69,7 @@ runtime dependency. Equivalent npm commands are available in `package.json`.
 | `web/` | HTML, CSS, and a small Wasm/Canvas adapter |
 | `src/`, `include/`, `demos/` | Retained C++/SDL Apple implementation |
 | `tools/matte-overlay/` | Standalone Swift macOS utility |
+| `tests/video-player/` | Standalone looping video player test app |
 | `scripts/`, `tests/`, `docs/` | Build entrypoints, checks, and project references |
 
 ## Retained Apple builds

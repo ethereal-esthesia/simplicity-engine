@@ -3,6 +3,8 @@
 ## Rust/Wasm/Tauri
 
 Run `make test` for native Rust tests and actual Wasm execution under Node.
+It also runs the video player adapter tests. Run `cargo test --locked -p
+video-player` for its command-line path validation.
 Run `make` to compile the native Tauri host with the generated Wasm embedded.
 Run `make run` for a webview check: a dark background with a centered 8-pixel mint
 mark, still centered after resizing. Engine load errors must be visible.
@@ -10,6 +12,11 @@ mark, still centered after resizing. Engine load errors must be visible.
 The [installer workflow](docs/test-installers.md) compiles other desktop targets,
 Android APKs, and iOS Simulator apps. Runtime and installation checks on those
 targets remain separate from compile checks.
+
+Run `npm run video-player:build`, then
+`target/release/video-player /path/to/video.mp4` to check that the standalone
+video plays and loops in its bordered window, including after resizing. Missing
+or unplayable files must show an error.
 
 ## Retained Apple demos
 

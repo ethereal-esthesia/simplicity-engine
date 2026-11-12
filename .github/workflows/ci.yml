@@ -57,8 +57,11 @@ jobs:
         run: |
           cargo fmt --all -- --check
           make test
+          cargo test --locked -p video-player
       - name: Build Tauri app bundle
         run: make bundle
+      - name: Build standalone video player
+        run: npm run video-player:build
       - name: Archive app with executable permissions
         run: ditto -c -k --sequesterRsrc --keepParent "target/release/bundle/macos/Simplicity Engine.app" target/simplicity-tauri-macos.zip
       - uses: actions/upload-artifact@v6

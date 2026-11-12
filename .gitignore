@@ -13,3 +13,4 @@ __pycache__/
 /node_modules/
 /web/generated/
 /src-tauri/gen/
+/tests/video-player/src-tauri/gen/

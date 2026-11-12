@@ -7,7 +7,8 @@
     "build": "tauri build --no-bundle -- --locked",
     "dev": "tauri dev",
     "bundle": "tauri build --bundles app -- --locked",
-    "test": "npm run build:wasm && cargo test --locked -p simplicity-core && node --test tests/wasm.test.mjs",
+    "test": "npm run build:wasm && cargo test --locked -p simplicity-core && node --test tests/wasm.test.mjs tests/video-player/video-player.test.mjs",
+    "video-player:build": "cd tests/video-player && tauri build --no-bundle -- --locked",
     "tauri": "tauri"
   },
   "devDependencies": {
