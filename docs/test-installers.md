@@ -19,7 +19,7 @@ These are Tauri packages; the retained SDL release workflow is separate.
 | Linux x64 | Ubuntu 22.04 | DEB, RPM, AppImage |
 | Linux ARM64 | Ubuntu 24.04 ARM | DEB, RPM, AppImage |
 | Android | Ubuntu + JDK 17 + NDK 27 | Debug APKs for arm64, armv7, x86, x86_64 |
-| iOS Simulator | Native ARM64/Intel macOS + Xcode | Zipped simulator .app for ARM64 and Intel Macs |
+| iOS Simulator | Apple silicon macOS + Xcode | Zipped simulator .app for Apple silicon Macs |
 
 These are GitHub-hosted virtual machines, with native packaging tools on each OS.
 A single Linux container cannot produce all supported installers reliably. The
