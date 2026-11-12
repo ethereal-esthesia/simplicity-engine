@@ -11,8 +11,8 @@ and Tauri**.
   host and the Rust code compiled to Wasm are separate build targets.
 - Keep JavaScript thin: load Wasm, forward input, and connect drawing to web APIs.
   Keep OS integration in Tauri instead of putting it in the portable core.
-- Hello Pixel now has a small Tauri host and dependency-free Rust/Wasm core.
-  Rust provides its centered mark geometry and palette; a Canvas adapter draws it.
+- The Tauri host currently presents a looping video player; the dependency-free
+  Rust/Wasm core retains the Hello Pixel geometry and palette.
 - The existing C++/SDL macOS and iPhone demos, menu API, bookmark probe, and Swift
   Matte Overlay remain available while features migrate. They are not yet ported.
 
@@ -40,15 +40,22 @@ Node.js 22 or later. See [developer setup](docs/developer-setup.md).
 make setup       # install locked npm dependencies and the Rust Wasm target
 make             # build Wasm and the release Tauri executable
 make test        # native Rust tests and execution of the compiled Wasm
-make run         # launch Tauri in development mode
 make bundle      # build the macOS .app
 ```
 
 The release executable is `target/release/simplicity-app`; the macOS app is
-`target/release/bundle/macos/Simplicity Engine.app`. The demo opens a dark window
-with a centered mint mark. Generated Wasm lives in `web/generated/` and is rebuilt
-automatically before Tauri runs or builds. Node is build/test tooling, not an app
-runtime dependency. Equivalent npm commands are available in `package.json`.
+`target/release/bundle/macos/Simplicity Engine.app`. Run the executable with a
+video path to play it continuously in a bordered window:
+
+```sh
+target/release/simplicity-app /path/to/video.mp4
+```
+
+Video formats depend on the platform webview. Errors, including a missing or
+unplayable path, are shown in the window. Generated Wasm lives in `web/generated/`
+and is rebuilt automatically before Tauri runs or builds. Node is build/test
+tooling, not an app runtime dependency. Equivalent npm commands are available in
+`package.json`.
 
 ## Repository layout
 

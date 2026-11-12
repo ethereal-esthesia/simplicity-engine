@@ -9,15 +9,20 @@
     "frontendDist": "../web"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Simplicity Engine - Hello Pixel",
+        "title": "Simplicity Engine - Video Player",
         "width": 800,
         "height": 600
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ipc: http://ipc.localhost; media-src 'self' asset: http://asset.localhost",
+      "assetProtocol": {
+        "enable": true,
+        "scope": []
+      }
     }
   },
   "bundle": {

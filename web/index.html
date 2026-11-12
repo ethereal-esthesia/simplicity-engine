@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Simplicity Engine — Hello Pixel</title>
+  <title>Simplicity Engine — Video Player</title>
   <link rel="stylesheet" href="style.css">
-  <script type="module" src="main.js"></script>
+  <script type="module" src="main.mjs"></script>
 </head>
 <body>
-  <canvas aria-label="Hello Pixel: a mint mark centered on a dark background"></canvas>
-  <p id="status" role="status">Loading engine…</p>
+  <main>
+    <video aria-label="Video player" autoplay loop playsinline></video>
+    <p id="status" role="status">Loading video…</p>
+  </main>
 </body>
 </html>

@@ -3,9 +3,12 @@
 ## Rust/Wasm/Tauri
 
 Run `make test` for native Rust tests and actual Wasm execution under Node.
+It also runs the video player adapter tests. Run `cargo test --locked -p
+simplicity-app` for command-line path validation.
 Run `make` to compile the native Tauri host with the generated Wasm embedded.
-Run `make run` for a webview check: a dark background with a centered 8-pixel mint
-mark, still centered after resizing. Engine load errors must be visible.
+Run `target/release/simplicity-app /path/to/video.mp4` for a webview check:
+the bordered video plays and loops, including after resizing. Missing or
+unplayable files must show an error.
 `make bundle` builds the macOS app; test its launch separately from development.
 The [installer workflow](docs/test-installers.md) compiles other desktop targets,
 Android APKs, and iOS Simulator apps. Runtime and installation checks on those
