@@ -5,7 +5,9 @@ import vm from 'node:vm';
 import { setupWindowInteractions } from '../web/window-interactions.mjs';
 
 const source = (await readFile(new URL('../web/main.js', import.meta.url), 'utf8'))
-  .replace("import { setupWindowInteractions } from './window-interactions.mjs';", '');
+  .replace("import { setupWindowInteractions } from './window-interactions.mjs';", '')
+  .replace("import { createDiagramViewer } from './diagram-viewer.mjs';", '')
+  .replace("import { renderMermaid } from './generated/mermaid-renderer.mjs';", '');
 
 async function windowApp(invoke) {
   const listeners = {};
@@ -28,6 +30,13 @@ async function windowApp(invoke) {
     },
     window: { __TAURI__: { core: { invoke } } },
     setupWindowInteractions,
+    createDiagramViewer: () => ({
+      load: async () => {},
+      reveal() {},
+      hide() {},
+      isEditing: () => false,
+    }),
+    renderMermaid() {},
     matchMedia: () => ({ matches: false }),
     addEventListener(name, callback) { listeners[name] = callback; },
     requestAnimationFrame: callback => queueMicrotask(callback),
@@ -44,6 +53,7 @@ test('prepares the selected corner before expanding and collapses on Escape', as
   const app = await windowApp(async command => {
     commands.push(command);
     if (command === 'is_desktop') return true;
+    if (command === 'load_diagram_source') return 'flowchart TD\n  A --> B';
     if (command === 'prepare_window_expansion') return 'top-left';
   });
   app.listeners.click({ detail: 0 });
@@ -54,7 +64,7 @@ test('prepares the selected corner before expanding and collapses on Escape', as
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(app.attributes['aria-expanded'], 'false');
   assert.deepEqual(commands, [
-    'is_desktop', 'prepare_window_expansion', 'expand_window', 'shrink_window',
+    'is_desktop', 'load_diagram_source', 'prepare_window_expansion', 'expand_window', 'shrink_window',
   ]);
 });
 
@@ -63,6 +73,7 @@ test('cancels a prepared expansion if the animation command fails', async () => 
   const app = await windowApp(async command => {
     commands.push(command);
     if (command === 'is_desktop') return true;
+    if (command === 'load_diagram_source') return 'flowchart TD\n  A --> B';
     if (command === 'prepare_window_expansion') return 'bottom-right';
     if (command === 'expand_window') throw new Error('animation failed');
   });
@@ -71,7 +82,7 @@ test('cancels a prepared expansion if the animation command fails', async () => 
   assert.equal(app.button.disabled, false);
   assert.match(app.status.textContent, /animation failed/);
   assert.deepEqual(commands, [
-    'is_desktop', 'prepare_window_expansion', 'expand_window', 'cancel_window_expansion',
+    'is_desktop', 'load_diagram_source', 'prepare_window_expansion', 'expand_window', 'cancel_window_expansion',
   ]);
 });
 

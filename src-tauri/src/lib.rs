@@ -493,6 +493,21 @@ fn start_window_dragging(window: WebviewWindow) -> Result<(), String> {
     window.start_dragging().map_err(|error| error.to_string())
 }
 
+#[cfg(desktop)]
+#[tauri::command]
+fn load_diagram_source(file: tauri::State<'_, diagram_file::DiagramFile>) -> String {
+    file.source.clone()
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+fn save_diagram_source(
+    file: tauri::State<'_, diagram_file::DiagramFile>,
+    source: String,
+) -> Result<(), String> {
+    file.save(&source)
+}
+
 #[tauri::command]
 fn is_desktop() -> bool {
     cfg!(desktop)
@@ -502,7 +517,13 @@ fn is_desktop() -> bool {
 pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(desktop)]
+    let diagram = diagram_file::DiagramFile::from_process().unwrap_or_else(|error| {
+        eprintln!("{error}");
+        std::process::exit(2);
+    });
+    #[cfg(desktop)]
     let builder = builder
+        .manage(diagram)
         .manage(WindowState::default())
         .setup(|app| {
             let window = app
@@ -528,7 +549,9 @@ pub fn run() {
             cancel_window_expansion,
             expand_window,
             shrink_window,
-            start_window_dragging
+            start_window_dragging,
+            load_diagram_source,
+            save_diagram_source
         ]);
     #[cfg(mobile)]
     let builder = builder.invoke_handler(tauri::generate_handler![is_desktop]);
@@ -573,3 +596,5 @@ mod tests {
         );
     }
 }
+#[cfg(desktop)]
+mod diagram_file;

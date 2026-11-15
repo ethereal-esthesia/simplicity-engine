@@ -1,8 +1,11 @@
 import { setupWindowInteractions } from './window-interactions.mjs';
+import { createDiagramViewer } from './diagram-viewer.mjs';
+import { renderMermaid } from './generated/mermaid-renderer.mjs';
 
 const status = document.querySelector('#status');
 const expandButton = document.querySelector('#floating-expand');
 const expandedArtwork = document.querySelector('#expanded-artwork');
+const diagramRoot = document.querySelector('#diagram-view');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const invoke = window.__TAURI__?.core?.invoke;
 let isDesktop = false;
@@ -10,6 +13,9 @@ let isExpanded = false;
 let isExpanding = false;
 let isShrinking = false;
 let shrinkRequested = false;
+let diagramViewer = null;
+let diagramReady = Promise.resolve();
+let diagramLoadError = null;
 
 function showError(error) {
   status.textContent = `Unable to control the window: ${error.message ?? String(error)}`;
@@ -24,6 +30,8 @@ async function expandWindow() {
   expandButton.disabled = true;
   let prepared = false;
   try {
+    await diagramReady;
+    if (diagramLoadError) throw diagramLoadError;
     const corner = await invoke('prepare_window_expansion');
     prepared = true;
     expandButton.dataset.corner = corner;
@@ -32,7 +40,7 @@ async function expandWindow() {
     isExpanded = true;
     expandButton.setAttribute('aria-expanded', 'true');
     expandButton.classList.add('is-fading');
-    expandedArtwork.classList.add('is-visible');
+    diagramViewer.reveal();
   } catch (error) {
     expandButton.disabled = false;
     shrinkRequested = false;
@@ -69,7 +77,7 @@ async function shrinkWindow() {
     expandButton.setAttribute('aria-expanded', 'false');
     expandButton.disabled = false;
     expandButton.classList.remove('is-fading');
-    expandedArtwork.classList.remove('is-visible');
+    diagramViewer.hide();
   } catch (error) {
     showError(error);
   } finally {
@@ -87,6 +95,20 @@ if (!invoke) {
   invoke('is_desktop').then(desktop => {
     isDesktop = desktop;
     if (isDesktop) {
+      diagramViewer = createDiagramViewer({
+        root: diagramRoot,
+        diagram: document.querySelector('#diagram'),
+        editor: document.querySelector('#diagram-source'),
+        error: document.querySelector('#diagram-error'),
+        render: renderMermaid,
+        save: source => invoke('save_diagram_source', { source }),
+      });
+      diagramReady = invoke('load_diagram_source')
+        .then(source => diagramViewer.load(source))
+        .catch(error => {
+          diagramLoadError = error;
+          showError(error);
+        });
       expandButton.hidden = false;
       return;
     }
@@ -108,5 +130,9 @@ addEventListener('blur', requestShrink);
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape' || !isDesktop || (!isExpanded && !isExpanding)) return;
   event.preventDefault();
+  if (isExpanded && diagramViewer.isEditing()) {
+    diagramViewer.saveAndShow();
+    return;
+  }
   requestShrink();
 });

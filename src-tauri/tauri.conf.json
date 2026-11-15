@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "identifier": "dev.simplicityengine.desktop",
   "build": {
+    "beforeDevCommand": "npm run build:diagram",
+    "beforeBuildCommand": "npm run build:diagram",
     "frontendDist": "../web"
   },
   "app": {
@@ -23,7 +25,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost"
     }
   },
   "bundle": {

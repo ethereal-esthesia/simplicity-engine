@@ -14,9 +14,10 @@ and Tauri**.
 - The Tauri host opens as a small transparent, frameless, draggable window. Its
   supplied SVG button stays above other windows and expands the native window
   to a uniform inset equal to 5% of the current monitor's shorter dimension with
-  a white background, then reveals the full artwork. On macOS, the icon stays
-  anchored to the nearest display corner during expansion. Clicking outside the
-  window or pressing Escape returns it to its original position.
+  a white background, then reveals a Mermaid diagram. On macOS, the icon stays
+  anchored to the nearest display corner during expansion. Click the diagram to
+  edit its source; Escape saves valid source and returns to the diagram. Clicking
+  outside the window or pressing Escape from the diagram collapses the window.
 - The Rust core is built for native and Wasm targets. The Wasm artifact is tested
   independently; the native window uses the same Rust core for its geometry.
 - The existing C++/SDL macOS and iPhone demos, menu API, bookmark probe, and Swift
@@ -46,17 +47,26 @@ Node.js 22 or later. See [developer setup](docs/developer-setup.md).
 make setup       # install locked npm dependencies and the Rust Wasm target
 make             # build Wasm and the release Tauri executable
 make test        # native Rust tests and execution of the compiled Wasm
-make run         # launch Tauri in development mode
+make run DIAGRAM=/path/to/diagram.mmd  # launch with a Mermaid source file
 make bundle      # build the macOS .app
 ```
 
 The release executable is `target/release/simplicity-app`; the macOS app is
 `target/release/bundle/macos/Simplicity Engine.app`. The compact window is placed
 at the monitor's bottom-right corner. Drag it to reposition; click the SVG to
-resize the actual native window and reveal the full artwork after expansion.
+resize the actual native window and reveal the diagram after expansion. A source
+path is required; if the file is missing, the terminal asks before creating it.
+Empty files open an editor with commented usage hints. Invalid diagrams and
+file errors leave the editor open without overwriting the source; external file
+changes must be resolved by restarting before saving.
 `make test` builds and executes the Rust core's Wasm target. Node is build/test
 tooling, not an app runtime dependency. Equivalent npm commands are available in
 `package.json`.
+
+To launch without Make, use
+`npm run dev -- /path/to/diagram.mmd` or
+`target/release/simplicity-app /path/to/diagram.mmd`. The renderer is bundled
+locally at build time and does not require network access at runtime.
 
 The reusable `setupWindowInteractions` initializer in
 [`web/window-interactions.mjs`](web/window-interactions.mjs) uses the normal

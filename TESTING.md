@@ -6,7 +6,8 @@ Run `make test` for native Rust tests, actual Wasm execution under Node, and the
 video player adapter tests. Run `cargo test --locked -p video-player` for its
 command-line path validation. On macOS, run `cargo test --locked -p
 simplicity-app` to exercise the AppKit frame-coordinate mapping.
-Run `make` to compile the native Tauri host. Run `make run` to verify the app
+Run `make` to compile the native Tauri host. Run
+`make run DIAGRAM=/path/to/diagram.mmd` to verify the app
 opens as a small transparent, borderless, rounded, always-on-top window at the
 monitor's bottom-right corner. Drag it to verify native window dragging without
 expansion, including a long drag; a click released less than five pixels from
@@ -15,9 +16,14 @@ the optional drag-cursor setting shows grab/grabbing cursors. Click
 the SVG and confirm the window itself resizes smoothly at a 60 Hz target to a
 uniform inset equal to 5% of the smaller monitor dimension, with the small icon
 staying at the nearest display corner until the resize finishes; then the full
-SVG fades in over white. Test all four corners after dragging the compact
+diagram fades in over white. Click the diagram to edit its Mermaid source.
+Verify long lines wrap and a vertical scrollbar appears when needed; Escape
+must save valid edits and fade back to the updated diagram. Invalid source
+must keep the editor open with an error and leave the file unchanged. Test a
+missing path with both answers to the terminal creation prompt, and an empty
+file for commented usage hints. Test all four corners after dragging the compact
 window. On macOS, watch the top-left rounded corner during both
-directions for vibration or a rectangular frame, and verify that the artwork
+directions for vibration or a rectangular frame, and verify that the diagram
 does not fade in before the native animation finishes. Click outside the window
 and press Escape to verify both shrink it back to its original dragged position
 with all four corners rounded throughout. Tauri command failures must be visible.
