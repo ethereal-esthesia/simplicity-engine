@@ -8,18 +8,21 @@ command-line path validation. On macOS, run `cargo test --locked -p
 simplicity-app` to exercise the AppKit frame-coordinate mapping.
 Run `make` to compile the native Tauri host. Run `make run` to verify the app
 opens as a small transparent, borderless, rounded, always-on-top window at the
-monitor's bottom-right corner. Drag it to verify native window dragging. Click
+monitor's bottom-right corner. Drag it to verify native window dragging without
+expansion, including a long drag; a click released less than five pixels from
+the press should expand it. Confirm the normal cursor is used by default and
+the optional drag-cursor setting shows grab/grabbing cursors. Click
 the SVG and confirm the window itself resizes smoothly at a 60 Hz target to a
 uniform inset equal to 5% of the smaller monitor dimension, with the small icon
-staying in its bottom-right corner until the resize finishes; then the full SVG
-fades in over white. On macOS, watch the top-left rounded corner during both
+staying at the nearest display corner until the resize finishes; then the full
+SVG fades in over white. Test all four corners after dragging the compact
+window. On macOS, watch the top-left rounded corner during both
 directions for vibration or a rectangular frame, and verify that the artwork
 does not fade in before the native animation finishes. Click outside the window
-and press Escape to verify both shrink it back to the icon with all four corners
-rounded throughout. Tauri command failures must be visible.
+and press Escape to verify both shrink it back to its original dragged position
+with all four corners rounded throughout. Tauri command failures must be visible.
 On macOS, the native white backing matches the web surface and keeps the
-rounded corner stationary when the webview redraw lags. The icon can still
-move relative to that corner during the resize.
+rounded corner stationary when the webview redraw lags.
 `make bundle` builds the macOS app; test its launch separately from development.
 The [installer workflow](docs/test-installers.md) compiles other desktop targets,
 Android APKs, and iOS Simulator apps. Runtime and installation checks on those

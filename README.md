@@ -14,8 +14,9 @@ and Tauri**.
 - The Tauri host opens as a small transparent, frameless, draggable window. Its
   supplied SVG button stays above other windows and expands the native window
   to a uniform inset equal to 5% of the current monitor's shorter dimension with
-  a white background, then reveals the full artwork. Clicking outside the window
-  or pressing Escape shrinks it back to its icon.
+  a white background, then reveals the full artwork. On macOS, the icon stays
+  anchored to the nearest display corner during expansion. Clicking outside the
+  window or pressing Escape returns it to its original position.
 - The Rust core is built for native and Wasm targets. The Wasm artifact is tested
   independently; the native window uses the same Rust core for its geometry.
 - The existing C++/SDL macOS and iPhone demos, menu API, bookmark probe, and Swift
@@ -56,6 +57,13 @@ resize the actual native window and reveal the full artwork after expansion.
 `make test` builds and executes the Rust core's Wasm target. Node is build/test
 tooling, not an app runtime dependency. Equivalent npm commands are available in
 `package.json`.
+
+The reusable `setupWindowInteractions` initializer in
+[`web/window-interactions.mjs`](web/window-interactions.mjs) uses the normal
+cursor by default. Pass `showDragCursor: true` and include the
+`show-drag-cursor` rules from [`web/style.css`](web/style.css) to show grab and
+grabbing cursors. Pointer releases less than five screen pixels from the press
+activate the control; dragging does not.
 
 The standalone looping video player is kept in `tests/video-player/`, separate
 from Hello Pixel. Build it with `npm run video-player:build`, then run:

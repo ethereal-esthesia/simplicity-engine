@@ -38,9 +38,11 @@ body { user-select: none; }
   border: 0;
   border-radius: 14px;
   background: transparent;
-  cursor: grab;
   transition: opacity 450ms ease, transform 450ms ease;
 }
+
+#floating-expand[data-corner^="top"] { top: 12px; bottom: auto; }
+#floating-expand[data-corner$="left"] { left: 12px; right: auto; }
 
 #floating-expand img {
   display: block;
@@ -50,7 +52,8 @@ body { user-select: none; }
   pointer-events: none;
 }
 
-#floating-expand:active:not(:disabled) { cursor: grabbing; }
+.show-drag-cursor:not(:disabled) { cursor: grab; }
+.show-drag-cursor:active:not(:disabled) { cursor: grabbing; }
 #floating-expand:focus-visible { outline: 3px solid #40ffd0; outline-offset: 4px; }
 #floating-expand.is-fading { opacity: 0; transform: scale(.94); pointer-events: none; }
 #floating-expand:disabled { cursor: default; }

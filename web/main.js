@@ -1,10 +1,10 @@
+import { setupWindowInteractions } from './window-interactions.mjs';
+
 const status = document.querySelector('#status');
 const expandButton = document.querySelector('#floating-expand');
 const expandedArtwork = document.querySelector('#expanded-artwork');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const invoke = window.__TAURI__?.core?.invoke;
-let dragStart = null;
-let suppressClickUntil = 0;
 let isDesktop = false;
 let isExpanded = false;
 let isExpanding = false;
@@ -22,7 +22,12 @@ async function expandWindow() {
 
   isExpanding = true;
   expandButton.disabled = true;
+  let prepared = false;
   try {
+    const corner = await invoke('prepare_window_expansion');
+    prepared = true;
+    expandButton.dataset.corner = corner;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     await invoke('expand_window', { reducedMotion: reducedMotion.matches });
     isExpanded = true;
     expandButton.setAttribute('aria-expanded', 'true');
@@ -31,6 +36,14 @@ async function expandWindow() {
   } catch (error) {
     expandButton.disabled = false;
     shrinkRequested = false;
+    if (prepared) {
+      try {
+        await invoke('cancel_window_expansion');
+      } catch (cleanupError) {
+        showError(new Error(`${error.message ?? String(error)}; cleanup failed: ${cleanupError.message ?? String(cleanupError)}`));
+        return;
+      }
+    }
     showError(error);
   } finally {
     isExpanding = false;
@@ -84,26 +97,11 @@ if (!invoke) {
   });
 }
 
-expandButton.addEventListener('pointerdown', event => {
-  if (event.button !== 0 || expandButton.disabled) return;
-  dragStart = { x: event.screenX, y: event.screenY };
-});
-
-expandButton.addEventListener('pointermove', event => {
-  if (!dragStart) return;
-  if (Math.hypot(event.screenX - dragStart.x, event.screenY - dragStart.y) < 5) return;
-
-  dragStart = null;
-  suppressClickUntil = performance.now() + 500;
-  invoke('start_window_dragging').catch(showError);
-});
-
-expandButton.addEventListener('pointerup', () => { dragStart = null; });
-expandButton.addEventListener('pointercancel', () => { dragStart = null; });
-
-expandButton.addEventListener('click', () => {
-  if (expandButton.disabled || performance.now() < suppressClickUntil) return;
-  expandWindow();
+setupWindowInteractions({
+  element: expandButton,
+  startDragging: () => invoke('start_window_dragging'),
+  onActivate: expandWindow,
+  onError: showError,
 });
 
 addEventListener('blur', requestShrink);

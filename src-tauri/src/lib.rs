@@ -1,17 +1,24 @@
 #[cfg(target_os = "macos")]
 use block2::RcBlock;
 #[cfg(target_os = "macos")]
-use objc2_app_kit::{NSAnimatablePropertyContainer, NSAnimationContext, NSColor, NSWindow};
+use objc2_app_kit::{
+    NSAnimatablePropertyContainer, NSAnimationContext, NSAutoresizingMaskOptions, NSColor, NSView,
+    NSWindow,
+};
 #[cfg(target_os = "macos")]
 use objc2_foundation::{NSPoint, NSRect, NSSize};
 #[cfg(target_os = "macos")]
 use objc2_quartz_core::CAMediaTimingFunction;
 #[cfg(desktop)]
-use simplicity_core::window_geometry::{bottom_right_edges, target_edges, WindowEdges};
+use simplicity_core::window_geometry::{
+    bottom_right_edges, nearest_corner, target_edges, WindowCorner, WindowEdges,
+};
 #[cfg(all(desktop, not(target_os = "macos")))]
 use simplicity_core::window_geometry::{edge_deltas, interpolate_edges};
 #[cfg(target_os = "macos")]
 use std::sync::mpsc;
+#[cfg(desktop)]
+use std::sync::Mutex;
 #[cfg(all(desktop, not(target_os = "macos")))]
 use std::thread;
 #[cfg(desktop)]
@@ -29,10 +36,22 @@ use tauri::{LogicalPosition, WebviewWindow};
 const WINDOW_ANIMATION_DURATION: Duration = Duration::from_millis(1500);
 #[cfg(all(desktop, not(target_os = "macos")))]
 const FRAME_INTERVAL: Duration = Duration::from_nanos(1_000_000_000 / 60);
-#[cfg(desktop)]
-const ICON_WINDOW_SIZE: f64 = 88.0;
 #[cfg(target_os = "macos")]
 const WINDOW_CORNER_RADIUS: f64 = 20.0;
+
+#[cfg(desktop)]
+#[derive(Clone, Copy)]
+struct Expansion {
+    #[cfg(not(target_os = "macos"))]
+    original: WindowEdges,
+    target: WindowEdges,
+    #[cfg(target_os = "macos")]
+    original_frame: AppKitFrame,
+}
+
+#[cfg(desktop)]
+#[derive(Default)]
+struct WindowState(Mutex<Option<Expansion>>);
 
 #[cfg(target_os = "macos")]
 fn round_appkit_window(window: &WebviewWindow) -> Result<(), String> {
@@ -115,6 +134,68 @@ fn current_appkit_frame(window: &WebviewWindow) -> Result<AppKitFrame, String> {
                     }
                 });
             let _ = sender.send(frame);
+        })
+        .map_err(|error| error.to_string())?;
+    receiver.recv().map_err(|error| error.to_string())?
+}
+
+#[cfg(target_os = "macos")]
+fn set_webview_anchor(
+    window: &WebviewWindow,
+    anchor: Option<(WindowCorner, WindowEdges)>,
+) -> Result<(), String> {
+    let (sender, receiver) = mpsc::sync_channel(1);
+    window
+        .with_webview(move |webview| {
+            let view = unsafe { &*webview.inner().cast::<NSView>() };
+            // Tauri keeps the webview and its parent alive for this main-thread callback.
+            let result = unsafe { view.superview() }
+                .ok_or_else(|| "The webview has no parent view".to_owned())
+                .map(|parent| {
+                    if let Some((corner, target)) = anchor {
+                        let bounds = parent.bounds();
+                        let width = (target.right - target.left).max(bounds.size.width);
+                        let height = (target.bottom - target.top).max(bounds.size.height);
+                        let right =
+                            matches!(corner, WindowCorner::TopRight | WindowCorner::BottomRight);
+                        let top = matches!(corner, WindowCorner::TopLeft | WindowCorner::TopRight);
+                        let y_at_min = top == parent.isFlipped();
+                        let frame = NSRect {
+                            origin: NSPoint {
+                                x: if right {
+                                    bounds.size.width - width
+                                } else {
+                                    0.0
+                                },
+                                y: if y_at_min {
+                                    0.0
+                                } else {
+                                    bounds.size.height - height
+                                },
+                            },
+                            size: NSSize { width, height },
+                        };
+                        let horizontal = if right {
+                            NSAutoresizingMaskOptions::ViewMinXMargin
+                        } else {
+                            NSAutoresizingMaskOptions::ViewMaxXMargin
+                        };
+                        let vertical = if y_at_min {
+                            NSAutoresizingMaskOptions::ViewMaxYMargin
+                        } else {
+                            NSAutoresizingMaskOptions::ViewMinYMargin
+                        };
+                        view.setAutoresizingMask(horizontal | vertical);
+                        view.setFrame(frame);
+                    } else {
+                        view.setAutoresizingMask(
+                            NSAutoresizingMaskOptions::ViewWidthSizable
+                                | NSAutoresizingMaskOptions::ViewHeightSizable,
+                        );
+                        view.setFrame(parent.bounds());
+                    }
+                });
+            let _ = sender.send(result);
         })
         .map_err(|error| error.to_string())?;
     receiver.recv().map_err(|error| error.to_string())?
@@ -250,16 +331,144 @@ fn animate_window_to(
 }
 
 #[cfg(desktop)]
-fn expand_native_window(window: WebviewWindow, reduced_motion: bool) -> Result<(), String> {
+fn prepare_native_expansion(window: WebviewWindow) -> Result<&'static str, String> {
+    let original = current_edges(&window)?;
     let target = target_edges_for_window(&window)?;
-    animate_window_to(window, target, reduced_motion)
+    let corner = nearest_corner(original, target);
+    let expansion = Expansion {
+        #[cfg(not(target_os = "macos"))]
+        original,
+        target,
+        #[cfg(target_os = "macos")]
+        original_frame: current_appkit_frame(&window)?,
+    };
+    let state = window.state::<WindowState>();
+    let mut saved = state.0.lock().map_err(|error| error.to_string())?;
+    if saved.is_some() {
+        return Err("A window expansion is already active".to_owned());
+    }
+    #[cfg(target_os = "macos")]
+    set_webview_anchor(&window, Some((corner, target)))?;
+    *saved = Some(expansion);
+    Ok(match corner {
+        WindowCorner::TopLeft => "top-left",
+        WindowCorner::TopRight => "top-right",
+        WindowCorner::BottomLeft => "bottom-left",
+        WindowCorner::BottomRight => "bottom-right",
+    })
+}
+
+#[cfg(desktop)]
+fn saved_expansion(window: &WebviewWindow) -> Result<Expansion, String> {
+    window
+        .state::<WindowState>()
+        .0
+        .lock()
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "No original window position is available".to_owned())
+}
+
+#[cfg(desktop)]
+fn clear_expansion(window: &WebviewWindow) -> Result<(), String> {
+    *window
+        .state::<WindowState>()
+        .0
+        .lock()
+        .map_err(|error| error.to_string())? = None;
+    Ok(())
+}
+
+#[cfg(desktop)]
+fn animate_to_original(
+    window: WebviewWindow,
+    expansion: Expansion,
+    reduced_motion: bool,
+) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    return animate_appkit_frame(&window, expansion.original_frame, reduced_motion);
+    #[cfg(not(target_os = "macos"))]
+    animate_window_to(window, expansion.original, reduced_motion)
+}
+
+#[cfg(desktop)]
+fn expand_native_window(window: WebviewWindow, reduced_motion: bool) -> Result<(), String> {
+    let expansion = saved_expansion(&window)?;
+    let animation = animate_window_to(window.clone(), expansion.target, reduced_motion);
+    #[cfg(target_os = "macos")]
+    let restore = set_webview_anchor(&window, None);
+    #[cfg(not(target_os = "macos"))]
+    let restore: Result<(), String> = Ok(());
+
+    match (animation, restore) {
+        (Ok(()), Ok(())) => Ok(()),
+        (animation, restore) => {
+            let mut errors = Vec::new();
+            if let Err(error) = animation {
+                errors.push(format!("Window animation failed: {error}"));
+            }
+            if let Err(error) = restore {
+                errors.push(format!("Webview restoration failed: {error}"));
+            }
+            if let Err(error) = animate_to_original(window.clone(), expansion, true) {
+                errors.push(format!("Window rollback failed: {error}"));
+            }
+            if let Err(error) = clear_expansion(&window) {
+                errors.push(format!("Expansion state cleanup failed: {error}"));
+            }
+            Err(errors.join("; "))
+        }
+    }
 }
 
 #[cfg(desktop)]
 fn shrink_native_window(window: WebviewWindow, reduced_motion: bool) -> Result<(), String> {
-    let monitor_edges = target_edges_for_window(&window)?;
-    let target = bottom_right_edges(monitor_edges, ICON_WINDOW_SIZE, ICON_WINDOW_SIZE);
-    animate_window_to(window, target, reduced_motion)
+    let expansion = saved_expansion(&window)?;
+    animate_to_original(window.clone(), expansion, reduced_motion)?;
+    clear_expansion(&window)
+}
+
+#[cfg(desktop)]
+fn cancel_native_expansion(window: WebviewWindow) -> Result<(), String> {
+    let expansion = *window
+        .state::<WindowState>()
+        .0
+        .lock()
+        .map_err(|error| error.to_string())?;
+    let Some(expansion) = expansion else {
+        return Ok(());
+    };
+    let mut errors = Vec::new();
+    #[cfg(target_os = "macos")]
+    if let Err(error) = set_webview_anchor(&window, None) {
+        errors.push(format!("Webview restoration failed: {error}"));
+    }
+    if let Err(error) = animate_to_original(window.clone(), expansion, true) {
+        errors.push(format!("Window rollback failed: {error}"));
+    }
+    if let Err(error) = clear_expansion(&window) {
+        errors.push(format!("Expansion state cleanup failed: {error}"));
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    }
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn prepare_window_expansion(window: WebviewWindow) -> Result<&'static str, String> {
+    tauri::async_runtime::spawn_blocking(move || prepare_native_expansion(window))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn cancel_window_expansion(window: WebviewWindow) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || cancel_native_expansion(window))
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 #[cfg(desktop)]
@@ -294,6 +503,7 @@ pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(desktop)]
     let builder = builder
+        .manage(WindowState::default())
         .setup(|app| {
             let window = app
                 .get_webview_window("main")
@@ -314,6 +524,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             is_desktop,
+            prepare_window_expansion,
+            cancel_window_expansion,
             expand_window,
             shrink_window,
             start_window_dragging

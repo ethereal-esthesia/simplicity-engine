@@ -6,6 +6,25 @@ pub struct WindowEdges {
     pub bottom: f64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WindowCorner {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+pub fn nearest_corner(window: WindowEdges, display: WindowEdges) -> WindowCorner {
+    let left = window.left + window.right < display.left + display.right;
+    let top = window.top + window.bottom < display.top + display.bottom;
+    match (top, left) {
+        (true, true) => WindowCorner::TopLeft,
+        (true, false) => WindowCorner::TopRight,
+        (false, true) => WindowCorner::BottomLeft,
+        (false, false) => WindowCorner::BottomRight,
+    }
+}
+
 pub fn target_edges(origin_x: f64, origin_y: f64, width: f64, height: f64) -> WindowEdges {
     let inset = width.min(height) * 0.05;
     WindowEdges {
@@ -128,5 +147,36 @@ mod tests {
                 bottom: 10.5,
             }
         );
+    }
+
+    #[test]
+    fn nearest_display_corner_follows_window_center_in_each_quadrant() {
+        let display = target_edges(-1000.0, -500.0, 1000.0, 800.0);
+        for (x, y, expected) in [
+            (-900.0, -400.0, WindowCorner::TopLeft),
+            (-200.0, -400.0, WindowCorner::TopRight),
+            (-900.0, 100.0, WindowCorner::BottomLeft),
+            (-200.0, 100.0, WindowCorner::BottomRight),
+        ] {
+            let window = WindowEdges {
+                left: x,
+                top: y,
+                right: x + 88.0,
+                bottom: y + 88.0,
+            };
+            assert_eq!(nearest_corner(window, display), expected);
+        }
+    }
+
+    #[test]
+    fn nearest_display_corner_breaks_center_ties_toward_bottom_right() {
+        let display = target_edges(0.0, 0.0, 800.0, 600.0);
+        let centered = WindowEdges {
+            left: 356.0,
+            top: 256.0,
+            right: 444.0,
+            bottom: 344.0,
+        };
+        assert_eq!(nearest_corner(centered, display), WindowCorner::BottomRight);
     }
 }
