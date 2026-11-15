@@ -26,10 +26,11 @@ implementation works through the Wasm boundary. JavaScript tests should cover
 the Wasm/Canvas and Tauri webview adapters, not reimplement engine behavior.
 Rust tests in Tauri host crates cover host-specific integration.
 
-The retained C++/SDL tests cover legacy menu behavior and native driver
-integration while those features are being migrated. New portable behavior
-belongs in `simplicity-core`; when migrating legacy behavior, move its unit
-tests with it and keep native tests focused on SDL/AppKit driver behavior.
+The retained C++/SDL tests cover menu presentation and native driver
+integration. Portable menu validation, mutation, and activation behavior lives
+in `simplicity-core` and is shared with the native menu drivers through its C
+ABI. Rust unit tests own those rules; CTest remains focused on SDL/AppKit
+integration.
 
 ## Retained Apple demos
 
@@ -45,8 +46,8 @@ ctest --test-dir build/release --output-on-failure
 python3 tests/test_ios_setup.py
 ```
 
-CTest covers legacy menu behavior, a headless Menu Studio run, and SDL
-initialization. Portable RNG behavior is tested in `simplicity-core`.
+CTest covers touch-menu interaction, a headless Menu Studio run, and SDL
+initialization. Portable RNG and menu behavior are tested in `simplicity-core`.
 `./scripts/menu_demo.sh test host` also verifies native AppKit menu construction,
 state, and dispatch.
 

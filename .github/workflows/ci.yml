@@ -14,6 +14,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
       - name: Install Ninja
         run: brew install ninja
       - name: Debug build and tests
@@ -34,6 +38,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --target aarch64-apple-ios-sim
+          rustup default stable
       - name: Build iPhone simulator app
         run: |
           cmake --preset ios-iphone-simulator-debug

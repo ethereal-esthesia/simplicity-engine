@@ -8,6 +8,64 @@ project(simplicity_engine LANGUAGES C CXX)
 if(NOT APPLE)
   message(FATAL_ERROR "Native builds support Apple platforms only. Use the Rust/Wasm/Tauri build for the new application direction; see README.md.")
 endif()
+
+find_program(CARGO_EXECUTABLE cargo REQUIRED)
+find_program(RUSTC_EXECUTABLE rustc REQUIRED)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  if(CMAKE_OSX_SYSROOT MATCHES "iphonesimulator")
+    if(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
+      set(SIMPLICITY_RUST_TARGET aarch64-apple-ios-sim)
+    elseif(CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
+      set(SIMPLICITY_RUST_TARGET x86_64-apple-ios)
+    else()
+      message(FATAL_ERROR "Unsupported iOS Simulator architecture for the Rust core: ${CMAKE_OSX_ARCHITECTURES}")
+    endif()
+  elseif(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
+    set(SIMPLICITY_RUST_TARGET aarch64-apple-ios)
+  else()
+    message(FATAL_ERROR "Unsupported iOS device architecture for the Rust core: ${CMAKE_OSX_ARCHITECTURES}")
+  endif()
+else()
+  execute_process(
+    COMMAND "${RUSTC_EXECUTABLE}" -vV
+    OUTPUT_VARIABLE RUSTC_VERSION_INFO
+    RESULT_VARIABLE RUSTC_VERSION_RESULT
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(NOT RUSTC_VERSION_RESULT EQUAL 0)
+    message(FATAL_ERROR "Unable to determine the Rust host target using rustc -vV")
+  endif()
+  string(REGEX MATCH "host: ([^\r\n]+)" RUSTC_HOST_MATCH "${RUSTC_VERSION_INFO}")
+  if(NOT RUSTC_HOST_MATCH)
+    message(FATAL_ERROR "Unable to parse the Rust host target from rustc -vV")
+  endif()
+  set(SIMPLICITY_RUST_TARGET "${CMAKE_MATCH_1}")
+endif()
+
+if(DEFINED ENV{CARGO_TARGET_DIR} AND NOT "$ENV{CARGO_TARGET_DIR}" STREQUAL "")
+  get_filename_component(SIMPLICITY_CARGO_TARGET_DIR "$ENV{CARGO_TARGET_DIR}" ABSOLUTE BASE_DIR "${CMAKE_SOURCE_DIR}")
+else()
+  set(SIMPLICITY_CARGO_TARGET_DIR "${CMAKE_SOURCE_DIR}/target")
+endif()
+set(SIMPLICITY_RUST_ARCHIVE_DIR "${SIMPLICITY_CARGO_TARGET_DIR}/${SIMPLICITY_RUST_TARGET}")
+set(SIMPLICITY_RUST_DEBUG_ARCHIVE "${SIMPLICITY_RUST_ARCHIVE_DIR}/debug/libsimplicity_core.a")
+set(SIMPLICITY_RUST_RELEASE_ARCHIVE "${SIMPLICITY_RUST_ARCHIVE_DIR}/release/libsimplicity_core.a")
+add_custom_target(simplicity_core_rust_build
+  COMMAND "${CARGO_EXECUTABLE}" build --locked --package simplicity-core
+          --target "${SIMPLICITY_RUST_TARGET}"
+          --profile "$<IF:$<CONFIG:Release>,release,dev>"
+  BYPRODUCTS "${SIMPLICITY_RUST_DEBUG_ARCHIVE}" "${SIMPLICITY_RUST_RELEASE_ARCHIVE}"
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+  COMMENT "Building the shared Rust core for ${SIMPLICITY_RUST_TARGET}"
+  VERBATIM)
+add_library(simplicity_core_rust STATIC IMPORTED GLOBAL)
+set_target_properties(simplicity_core_rust PROPERTIES
+  IMPORTED_CONFIGURATIONS "DEBUG;RELEASE;RELWITHDEBINFO;MINSIZEREL"
+  IMPORTED_LOCATION_DEBUG "${SIMPLICITY_RUST_DEBUG_ARCHIVE}"
+  IMPORTED_LOCATION_RELEASE "${SIMPLICITY_RUST_RELEASE_ARCHIVE}"
+  IMPORTED_LOCATION_RELWITHDEBINFO "${SIMPLICITY_RUST_RELEASE_ARCHIVE}"
+  IMPORTED_LOCATION_MINSIZEREL "${SIMPLICITY_RUST_RELEASE_ARCHIVE}")
+add_dependencies(simplicity_core_rust simplicity_core_rust_build)
+
 # Resolve the target toolchain before deciding which OS languages to enable.
 if(APPLE)
   enable_language(OBJCXX)
@@ -48,6 +106,7 @@ endif()
 
 add_library(simplicity_menu_model src/menu/menu.cpp)
 target_include_directories(simplicity_menu_model PUBLIC include)
+target_link_libraries(simplicity_menu_model PUBLIC simplicity_core_rust)
 set_target_properties(simplicity_menu_model PROPERTIES POSITION_INDEPENDENT_CODE ON)
 add_library(simplicity_menu src/menu/menu_touch.cpp)
 target_link_libraries(simplicity_menu PUBLIC simplicity_menu_model SDL3::SDL3)
