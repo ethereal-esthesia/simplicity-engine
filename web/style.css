@@ -13,11 +13,8 @@ body { user-select: none; }
   inset: 0;
   overflow: hidden;
   border-radius: 20px;
-  background: #f4f4f0;
-  transition: background-color 250ms ease;
+  background: #fff;
 }
-
-#window-surface.is-expanded { background: #080c12; }
 
 #expanded-artwork {
   position: absolute;

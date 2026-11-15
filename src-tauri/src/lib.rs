@@ -1,5 +1,7 @@
 #[cfg(desktop)]
-use simplicity_core::window_geometry::{edge_deltas, interpolate_edges, target_edges, WindowEdges};
+use simplicity_core::window_geometry::{
+    bottom_right_edges, edge_deltas, interpolate_edges, target_edges, WindowEdges,
+};
 #[cfg(desktop)]
 use std::thread;
 #[cfg(desktop)]
@@ -10,9 +12,11 @@ use tauri::Manager;
 use tauri::{PhysicalPosition, PhysicalSize, WebviewWindow};
 
 #[cfg(desktop)]
-const EXPANSION_DURATION: Duration = Duration::from_millis(1500);
+const WINDOW_ANIMATION_DURATION: Duration = Duration::from_millis(1500);
 #[cfg(desktop)]
 const FRAME_INTERVAL: Duration = Duration::from_millis(16);
+#[cfg(desktop)]
+const ICON_WINDOW_SIZE: f64 = 88.0;
 
 #[cfg(desktop)]
 fn target_edges_for_window(window: &WebviewWindow) -> Result<WindowEdges, String> {
@@ -47,21 +51,29 @@ fn apply_edges(window: &WebviewWindow, edges: WindowEdges) -> Result<(), String>
 }
 
 #[cfg(desktop)]
-fn expand_native_window(window: WebviewWindow, reduced_motion: bool) -> Result<(), String> {
-    let target = target_edges_for_window(&window)?;
+fn current_edges(window: &WebviewWindow) -> Result<WindowEdges, String> {
     let position = window.outer_position().map_err(|error| error.to_string())?;
     let size = window.outer_size().map_err(|error| error.to_string())?;
-    let start = WindowEdges {
+    Ok(WindowEdges {
         left: f64::from(position.x),
         top: f64::from(position.y),
         right: f64::from(position.x) + f64::from(size.width),
         bottom: f64::from(position.y) + f64::from(size.height),
-    };
+    })
+}
+
+#[cfg(desktop)]
+fn animate_window_to(
+    window: WebviewWindow,
+    target: WindowEdges,
+    reduced_motion: bool,
+) -> Result<(), String> {
+    let start = current_edges(&window)?;
     let deltas = edge_deltas(start, target);
     let duration = if reduced_motion {
         Duration::from_millis(1)
     } else {
-        EXPANSION_DURATION
+        WINDOW_ANIMATION_DURATION
     };
     let started_at = Instant::now();
 
@@ -76,9 +88,32 @@ fn expand_native_window(window: WebviewWindow, reduced_motion: bool) -> Result<(
 }
 
 #[cfg(desktop)]
+fn expand_native_window(window: WebviewWindow, reduced_motion: bool) -> Result<(), String> {
+    let target = target_edges_for_window(&window)?;
+    animate_window_to(window, target, reduced_motion)
+}
+
+#[cfg(desktop)]
+fn shrink_native_window(window: WebviewWindow, reduced_motion: bool) -> Result<(), String> {
+    let monitor_edges = target_edges_for_window(&window)?;
+    let scale_factor = window.scale_factor().map_err(|error| error.to_string())?;
+    let icon_size = ICON_WINDOW_SIZE * scale_factor;
+    let target = bottom_right_edges(monitor_edges, icon_size, icon_size);
+    animate_window_to(window, target, reduced_motion)
+}
+
+#[cfg(desktop)]
 #[tauri::command]
 async fn expand_window(window: WebviewWindow, reduced_motion: bool) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || expand_native_window(window, reduced_motion))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn shrink_window(window: WebviewWindow, reduced_motion: bool) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || shrink_native_window(window, reduced_motion))
         .await
         .map_err(|error| error.to_string())?
 }
@@ -114,6 +149,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             is_desktop,
             expand_window,
+            shrink_window,
             start_window_dragging
         ]);
     #[cfg(mobile)]
