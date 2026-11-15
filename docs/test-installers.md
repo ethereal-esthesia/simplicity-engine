@@ -93,8 +93,8 @@ shareable unsigned IPA or TestFlight distribution. See
    choose a unique identifier in a local Tauri config and pass it with `--config`
    to both `init` and `dev`; do not change the shared identifier just for your account.
 6. If prompted on the device, trust your developer under **Settings > General >
-   VPN & Device Management**. Confirm the app launches and displays the mint
-   Hello Pixel graphic. Report the step and error if anything fails, without
+   VPN & Device Management**. Confirm the app launches and displays the supplied
+   window artwork. Report the step and error if anything fails, without
    sharing account passwords or private keys.
 
 The setup script saves only the team ID to `local/apple-development-team`

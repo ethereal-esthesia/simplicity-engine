@@ -5,8 +5,9 @@
 Use Rust for shared engine logic and straightforward conversions, compiling the
 portable core to WebAssembly. Tauri is the app host across intended platforms.
 Keep web rendering/input adapters small and native services in the Tauri Rust host.
-Hello Pixel has an initial Rust/Wasm/Tauri implementation; the existing Apple demos
-remain during migration. See the [roadmap](platform-targets-todo.md).
+The Tauri host uses the shared Rust core for native window geometry; the Wasm
+target remains independently tested. Existing Apple demos remain during migration.
+See the [roadmap](platform-targets-todo.md).
 
 ## Purpose
 Define what makes `simplicity-engine` an engine (not just a library or app scaffold), and establish a minimum bar for architecture decisions.

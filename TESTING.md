@@ -2,14 +2,16 @@
 
 ## Rust/Wasm/Tauri
 
-Run `make test` for native Rust tests and actual Wasm execution under Node.
-It also runs the video player adapter tests. Run `cargo test --locked -p
-video-player` for its command-line path validation.
-Run `make` to compile the native Tauri host with the generated Wasm embedded.
-Run `make run` for a webview check: a dark background with a centered 8-pixel mint
-mark and a bottom-right floating SVG button. Click it and verify the frame eases
-to a uniform inset equal to 5% of the smaller viewport dimension, then fades in
-the full SVG while the button fades out. Engine load errors must be visible.
+Run `make test` for native Rust tests, actual Wasm execution under Node, and the
+video player adapter tests. Run `cargo test --locked -p video-player` for its
+command-line path validation.
+Run `make` to compile the native Tauri host. Run `make run` to verify the app
+opens as a small transparent, borderless, rounded window at the monitor's
+bottom-right corner. Drag it to verify native window dragging. Click the SVG and
+confirm the window itself eases to a uniform inset equal to 5% of the smaller
+monitor dimension, with the small icon staying in its bottom-right corner until
+the resize finishes; then the full SVG fades in. Tauri command failures must be
+visible.
 `make bundle` builds the macOS app; test its launch separately from development.
 The [installer workflow](docs/test-installers.md) compiles other desktop targets,
 Android APKs, and iOS Simulator apps. Runtime and installation checks on those

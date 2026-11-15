@@ -12,7 +12,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+simplicity-core = { path = "../crates/engine-core" }
+tauri = { version = "2", features = ["macos-private-api"] }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

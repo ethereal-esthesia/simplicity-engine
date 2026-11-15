@@ -1,110 +1,64 @@
-import { easeProgress, edgeDeltas, interpolateEdges, targetEdges } from './expansion.mjs';
-
 const status = document.querySelector('#status');
 const expandButton = document.querySelector('#floating-expand');
-const expansion = document.querySelector('#expanding-window');
 const expandedArtwork = document.querySelector('#expanded-artwork');
+const windowSurface = document.querySelector('#window-surface');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const expansionDuration = reducedMotion.matches ? 1 : 1500;
-let animation = null;
+const invoke = window.__TAURI__?.core?.invoke;
+let dragStart = null;
+let suppressClickUntil = 0;
 
-const readEdges = element => {
-  const { left, top, right, bottom } = element.getBoundingClientRect();
-  return { left, top, right, bottom };
-};
-
-const applyEdges = (element, edges) => {
-  element.style.left = `${edges.left}px`;
-  element.style.top = `${edges.top}px`;
-  element.style.width = `${edges.right - edges.left}px`;
-  element.style.height = `${edges.bottom - edges.top}px`;
-};
-
-function animateExpansion(now) {
-  if (!animation) return;
-  const progress = Math.min(1, (now - animation.startedAt) / animation.duration);
-  const eased = easeProgress(progress);
-  applyEdges(expansion, interpolateEdges(animation.start, animation.deltas, progress));
-  expansion.style.borderRadius =
-    `${animation.startRadius + (animation.endRadius - animation.startRadius) * eased}px`;
-
-  if (progress < 1) {
-    requestAnimationFrame(animateExpansion);
-    return;
-  }
-
-  applyEdges(expansion, animation.target);
-  expansion.style.borderRadius = `${animation.endRadius}px`;
-  animation = null;
-  expansion.setAttribute('aria-hidden', 'false');
-  expansion.focus({ preventScroll: true });
-  expandButton.classList.add('is-fading');
-  expandedArtwork.classList.add('is-visible');
-  window.setTimeout(() => { expandButton.hidden = true; }, reducedMotion.matches ? 1 : 450);
-}
-
-expandButton.addEventListener('click', () => {
-  if (animation || expandButton.disabled) return;
-
-  expandButton.disabled = true;
-  expandButton.setAttribute('aria-expanded', 'true');
-  expansion.hidden = false;
-  const start = readEdges(expandButton);
-  const target = targetEdges(innerWidth, innerHeight);
-  applyEdges(expansion, start);
-  animation = {
-    start,
-    target,
-    deltas: edgeDeltas(start, target),
-    startedAt: performance.now(),
-    duration: expansionDuration,
-    startRadius: Math.min(start.right - start.left, start.bottom - start.top) / 2,
-    endRadius: 18,
-  };
-  requestAnimationFrame(animateExpansion);
-});
-
-addEventListener('resize', () => {
-  if (!animation) return;
-  const now = performance.now();
-  const elapsed = now - animation.startedAt;
-  const start = readEdges(expansion);
-  const target = targetEdges(innerWidth, innerHeight);
-  animation = {
-    ...animation,
-    start,
-    target,
-    deltas: edgeDeltas(start, target),
-    startedAt: now,
-    duration: Math.max(120, animation.duration - elapsed),
-    startRadius: Number.parseFloat(getComputedStyle(expansion).borderRadius),
-  };
-});
-
-try {
-  const response = await fetch('./generated/simplicity_core.wasm');
-  if (!response.ok) throw new Error(`Engine download failed (${response.status})`);
-  const { instance } = await WebAssembly.instantiate(await response.arrayBuffer());
-  const core = instance.exports;
-  if (core.abi_version() !== 1) throw new Error('Unsupported engine interface');
-  const canvas = document.querySelector('canvas');
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('Canvas rendering is unavailable');
-  const color = value => `#${value.toString(16).padStart(6, '0')}`;
-  const draw = () => {
-    canvas.width = Math.max(1, Math.round(innerWidth * devicePixelRatio));
-    canvas.height = Math.max(1, Math.round(innerHeight * devicePixelRatio));
-    context.fillStyle = color(core.background_rgb());
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = color(core.mark_rgb());
-    context.fillRect(core.mark_origin(canvas.width), core.mark_origin(canvas.height),
-      core.mark_size(), core.mark_size());
-  };
-  addEventListener('resize', draw);
-  draw();
-  status.hidden = true;
-  document.documentElement.dataset.engine = 'ready';
-} catch (error) {
-  status.textContent = `Unable to start the engine: ${error.message}`;
+function showError(error) {
+  status.textContent = `Unable to control the window: ${error.message ?? String(error)}`;
+  status.hidden = false;
   console.error(error);
 }
+
+if (!invoke) {
+  showError(new Error('Tauri command interface is unavailable'));
+} else {
+  invoke('is_desktop').then(isDesktop => {
+    if (isDesktop) {
+      windowSurface.classList.add('is-desktop');
+      expandButton.hidden = false;
+      return;
+    }
+
+    windowSurface.classList.add('is-expanded');
+    expandedArtwork.classList.add('is-visible');
+  }).catch(error => {
+    showError(error);
+  });
+}
+
+expandButton.addEventListener('pointerdown', event => {
+  if (event.button !== 0 || expandButton.disabled) return;
+  dragStart = { x: event.screenX, y: event.screenY };
+});
+
+expandButton.addEventListener('pointermove', event => {
+  if (!dragStart) return;
+  if (Math.hypot(event.screenX - dragStart.x, event.screenY - dragStart.y) < 5) return;
+
+  dragStart = null;
+  suppressClickUntil = performance.now() + 500;
+  invoke('start_window_dragging').catch(showError);
+});
+
+expandButton.addEventListener('pointerup', () => { dragStart = null; });
+expandButton.addEventListener('pointercancel', () => { dragStart = null; });
+
+expandButton.addEventListener('click', async () => {
+  if (expandButton.disabled || performance.now() < suppressClickUntil) return;
+
+  expandButton.disabled = true;
+  try {
+    await invoke('expand_window', { reducedMotion: reducedMotion.matches });
+    expandButton.setAttribute('aria-expanded', 'true');
+    windowSurface.classList.add('is-expanded');
+    expandButton.classList.add('is-fading');
+    expandedArtwork.classList.add('is-visible');
+  } catch (error) {
+    expandButton.disabled = false;
+    showError(error);
+  }
+});

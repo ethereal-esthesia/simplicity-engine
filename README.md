@@ -9,11 +9,13 @@ and Tauri**.
   compile it to **WebAssembly (Wasm)**. Keep one implementation across hosts.
 - Use **Tauri 2** for application windows and native services. Its native Rust
   host and the Rust code compiled to Wasm are separate build targets.
-- Keep JavaScript thin: load Wasm, forward input, and connect drawing to web APIs.
-  Keep OS integration in Tauri instead of putting it in the portable core.
-- Hello Pixel now has a small Tauri host and dependency-free Rust/Wasm core.
-  Rust provides its centered mark geometry and palette; a Canvas adapter draws it.
-  A floating button also expands the supplied SVG into a 5%-inset artwork view.
+- Keep JavaScript thin: use Tauri commands for OS integration and keep portable
+  geometry in the shared Rust core.
+- The Tauri host opens as a small transparent, frameless, draggable window. Its
+  supplied SVG button expands the native window to a uniform inset equal to 5% of
+  the current monitor's shorter dimension, then reveals the full artwork.
+- The Rust core is built for native and Wasm targets. The Wasm artifact is tested
+  independently; the native window uses the same Rust core for its geometry.
 - The existing C++/SDL macOS and iPhone demos, menu API, bookmark probe, and Swift
   Matte Overlay remain available while features migrate. They are not yet ported.
 
@@ -46,12 +48,12 @@ make bundle      # build the macOS .app
 ```
 
 The release executable is `target/release/simplicity-app`; the macOS app is
-`target/release/bundle/macos/Simplicity Engine.app`. The demo opens a dark window
-with a centered mint mark and a floating SVG control; clicking it expands the
-artwork from the bottom-right corner into a view inset by 5% of the smaller
-viewport dimension. Generated Wasm lives in `web/generated/` and is rebuilt
-automatically before Tauri runs or builds. Node is build/test tooling, not an app
-runtime dependency. Equivalent npm commands are available in `package.json`.
+`target/release/bundle/macos/Simplicity Engine.app`. The compact window is placed
+at the monitor's bottom-right corner. Drag it to reposition; click the SVG to
+resize the actual native window and reveal the full artwork after expansion.
+`make test` builds and executes the Rust core's Wasm target. Node is build/test
+tooling, not an app runtime dependency. Equivalent npm commands are available in
+`package.json`.
 
 The standalone looping video player is kept in `tests/video-player/`, separate
 from Hello Pixel. Build it with `npm run video-player:build`, then run:

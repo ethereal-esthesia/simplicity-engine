@@ -3,6 +3,7 @@
 
 pub mod fast_rng;
 pub mod menu;
+pub mod window_geometry;
 
 #[no_mangle]
 pub extern "C" fn abi_version() -> u32 {
