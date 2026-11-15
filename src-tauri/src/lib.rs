@@ -1,17 +1,23 @@
 #[cfg(target_os = "macos")]
-use objc2_app_kit::NSWindow;
+use block2::RcBlock;
+#[cfg(target_os = "macos")]
+use objc2_app_kit::{NSAnimatablePropertyContainer, NSAnimationContext, NSWindow};
 #[cfg(target_os = "macos")]
 use objc2_foundation::{NSPoint, NSRect, NSSize};
+#[cfg(target_os = "macos")]
+use objc2_quartz_core::CAMediaTimingFunction;
 #[cfg(desktop)]
-use simplicity_core::window_geometry::{
-    bottom_right_edges, edge_deltas, interpolate_edges, target_edges, WindowEdges,
-};
+use simplicity_core::window_geometry::{bottom_right_edges, target_edges, WindowEdges};
+#[cfg(all(desktop, not(target_os = "macos")))]
+use simplicity_core::window_geometry::{edge_deltas, interpolate_edges};
 #[cfg(target_os = "macos")]
 use std::sync::mpsc;
-#[cfg(desktop)]
+#[cfg(all(desktop, not(target_os = "macos")))]
 use std::thread;
 #[cfg(desktop)]
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[cfg(all(desktop, not(target_os = "macos")))]
+use std::time::Instant;
 #[cfg(all(desktop, not(target_os = "macos")))]
 use tauri::LogicalSize;
 #[cfg(desktop)]
@@ -21,10 +27,28 @@ use tauri::{LogicalPosition, WebviewWindow};
 
 #[cfg(desktop)]
 const WINDOW_ANIMATION_DURATION: Duration = Duration::from_millis(1500);
-#[cfg(desktop)]
+#[cfg(all(desktop, not(target_os = "macos")))]
 const FRAME_INTERVAL: Duration = Duration::from_nanos(1_000_000_000 / 60);
 #[cfg(desktop)]
 const ICON_WINDOW_SIZE: f64 = 88.0;
+#[cfg(target_os = "macos")]
+const WINDOW_CORNER_RADIUS: f64 = 20.0;
+
+#[cfg(target_os = "macos")]
+fn round_appkit_window(window: &WebviewWindow) -> Result<(), String> {
+    let pointer = window.ns_window().map_err(|error| error.to_string())?;
+    let ns_window = unsafe { &*pointer.cast::<NSWindow>() };
+    let view = ns_window
+        .contentView()
+        .ok_or_else(|| "The window has no content view to round".to_owned())?;
+    view.setWantsLayer(true);
+    let layer = view
+        .layer()
+        .ok_or_else(|| "The window content view has no backing layer".to_owned())?;
+    layer.setCornerRadius(WINDOW_CORNER_RADIUS);
+    layer.setMasksToBounds(true);
+    Ok(())
+}
 
 #[cfg(desktop)]
 fn target_edges_for_window(window: &WebviewWindow) -> Result<WindowEdges, String> {
@@ -110,31 +134,54 @@ fn appkit_frame_for_edges(
 }
 
 #[cfg(target_os = "macos")]
-fn set_appkit_frame(window: &WebviewWindow, frame: AppKitFrame) -> Result<(), String> {
+fn animate_appkit_frame(
+    window: &WebviewWindow,
+    frame: AppKitFrame,
+    reduced_motion: bool,
+) -> Result<(), String> {
     let (sender, receiver) = mpsc::sync_channel(1);
     let dispatch_window = window.clone();
     window
         .run_on_main_thread(move || {
-            let result = dispatch_window
-                .ns_window()
-                .map_err(|error| error.to_string())
-                .map(|pointer| {
-                    let ns_window = unsafe { &*pointer.cast::<NSWindow>() };
-                    ns_window.setFrame_display(
-                        NSRect {
-                            origin: NSPoint {
-                                x: frame.x,
-                                y: frame.y,
-                            },
-                            size: NSSize {
-                                width: frame.width,
-                                height: frame.height,
-                            },
-                        },
-                        true,
-                    );
-                });
-            let _ = sender.send(result);
+            let pointer = match dispatch_window.ns_window() {
+                Ok(pointer) => pointer,
+                Err(error) => {
+                    let _ = sender.send(Err(error.to_string()));
+                    return;
+                }
+            };
+            let ns_window = unsafe { &*pointer.cast::<NSWindow>() };
+            let rect = NSRect {
+                origin: NSPoint {
+                    x: frame.x,
+                    y: frame.y,
+                },
+                size: NSSize {
+                    width: frame.width,
+                    height: frame.height,
+                },
+            };
+            if reduced_motion {
+                ns_window.setFrame_display(rect, true);
+                let _ = sender.send(Ok(()));
+                return;
+            }
+
+            NSAnimationContext::beginGrouping();
+            let context = NSAnimationContext::currentContext();
+            context.setDuration(WINDOW_ANIMATION_DURATION.as_secs_f64());
+            // These control points produce the same smoothstep easing as the core.
+            let timing =
+                CAMediaTimingFunction::functionWithControlPoints(1.0 / 3.0, 0.0, 2.0 / 3.0, 1.0);
+            context.setTimingFunction(Some(&timing));
+            let completion = RcBlock::new(move || {
+                let _ = sender.send(Ok(()));
+            });
+            context.setCompletionHandler(Some(&completion));
+            ns_window
+                .animator()
+                .setFrame_display_animate(rect, true, true);
+            NSAnimationContext::endGrouping();
         })
         .map_err(|error| error.to_string())?;
     receiver.recv().map_err(|error| error.to_string())?
@@ -153,15 +200,13 @@ fn current_edges(window: &WebviewWindow) -> Result<WindowEdges, String> {
     })
 }
 
-#[cfg(desktop)]
+#[cfg(all(desktop, not(target_os = "macos")))]
 fn animate_window_to(
     window: WebviewWindow,
     target: WindowEdges,
     reduced_motion: bool,
 ) -> Result<(), String> {
     let start = current_edges(&window)?;
-    #[cfg(target_os = "macos")]
-    let start_frame = current_appkit_frame(&window)?;
     let deltas = edge_deltas(start, target);
     let duration = if reduced_motion {
         Duration::from_millis(1)
@@ -174,9 +219,6 @@ fn animate_window_to(
     loop {
         let progress = (started_at.elapsed().as_secs_f64() / duration.as_secs_f64()).min(1.0);
         let edges = interpolate_edges(start, deltas, progress);
-        #[cfg(target_os = "macos")]
-        set_appkit_frame(&window, appkit_frame_for_edges(start_frame, start, edges))?;
-        #[cfg(not(target_os = "macos"))]
         apply_edges(&window, edges)?;
         if progress >= 1.0 {
             return Ok(());
@@ -188,6 +230,21 @@ fn animate_window_to(
         }
         thread::sleep(next_frame.duration_since(now));
     }
+}
+
+#[cfg(target_os = "macos")]
+fn animate_window_to(
+    window: WebviewWindow,
+    target: WindowEdges,
+    reduced_motion: bool,
+) -> Result<(), String> {
+    let start = current_edges(&window)?;
+    let start_frame = current_appkit_frame(&window)?;
+    animate_appkit_frame(
+        &window,
+        appkit_frame_for_edges(start_frame, start, target),
+        reduced_motion,
+    )
 }
 
 #[cfg(desktop)]
@@ -239,6 +296,8 @@ pub fn run() {
             let window = app
                 .get_webview_window("main")
                 .ok_or_else(|| std::io::Error::other("The main window is not configured"))?;
+            #[cfg(target_os = "macos")]
+            round_appkit_window(&window).map_err(std::io::Error::other)?;
             let target = target_edges_for_window(&window).map_err(std::io::Error::other)?;
             let size = window.outer_size()?;
             let scale_factor = window.scale_factor()?;
