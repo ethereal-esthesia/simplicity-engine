@@ -17,6 +17,9 @@ directions for vibration or a rectangular frame, and verify that the artwork
 does not fade in before the native animation finishes. Click outside the window
 and press Escape to verify both shrink it back to the icon with all four corners
 rounded throughout. Tauri command failures must be visible.
+On macOS, the native white backing matches the web surface and keeps the
+rounded corner stationary when the webview redraw lags. The icon can still
+move relative to that corner during the resize.
 `make bundle` builds the macOS app; test its launch separately from development.
 The [installer workflow](docs/test-installers.md) compiles other desktop targets,
 Android APKs, and iOS Simulator apps. Runtime and installation checks on those

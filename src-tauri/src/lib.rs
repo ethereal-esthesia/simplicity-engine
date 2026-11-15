@@ -1,7 +1,7 @@
 #[cfg(target_os = "macos")]
 use block2::RcBlock;
 #[cfg(target_os = "macos")]
-use objc2_app_kit::{NSAnimatablePropertyContainer, NSAnimationContext, NSWindow};
+use objc2_app_kit::{NSAnimatablePropertyContainer, NSAnimationContext, NSColor, NSWindow};
 #[cfg(target_os = "macos")]
 use objc2_foundation::{NSPoint, NSRect, NSSize};
 #[cfg(target_os = "macos")]
@@ -45,6 +45,8 @@ fn round_appkit_window(window: &WebviewWindow) -> Result<(), String> {
     let layer = view
         .layer()
         .ok_or_else(|| "The window content view has no backing layer".to_owned())?;
+    // Keep the native surface visible when the webview redraws behind the frame.
+    layer.setBackgroundColor(Some(&NSColor::whiteColor().CGColor()));
     layer.setCornerRadius(WINDOW_CORNER_RADIUS);
     layer.setMasksToBounds(true);
     Ok(())
