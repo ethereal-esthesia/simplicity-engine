@@ -18,6 +18,19 @@ Run `npm run video-player:build`, then
 video plays and loops in its bordered window, including after resizing. Missing
 or unplayable files must show an error.
 
+## Shared engine test boundary
+
+`crates/engine-core` is the source of truth for portable engine behavior. Keep
+its unit tests in Rust, and use the compiled Wasm tests to verify that the same
+implementation works through the Wasm boundary. JavaScript tests should cover
+the Wasm/Canvas and Tauri webview adapters, not reimplement engine behavior.
+Rust tests in Tauri host crates cover host-specific integration.
+
+The retained C++/SDL tests cover legacy menu behavior and native driver
+integration while those features are being migrated. New portable behavior
+belongs in `simplicity-core`; when migrating legacy behavior, move its unit
+tests with it and keep native tests focused on SDL/AppKit driver behavior.
+
 ## Retained Apple demos
 
 On macOS, configure and build each preset before running its tests:
