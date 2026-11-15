@@ -9,6 +9,14 @@
 </head>
 <body>
   <canvas aria-label="Hello Pixel: a mint mark centered on a dark background"></canvas>
+  <section id="expanding-window" role="region" aria-label="Expanded artwork"
+           tabindex="-1" aria-hidden="true" hidden>
+    <img id="expanded-artwork" src="./assets/window-mark.svg" alt="Two overlapping window outlines">
+  </section>
+  <button id="floating-expand" type="button" aria-label="Expand artwork"
+          aria-controls="expanding-window" aria-expanded="false">
+    <img src="./assets/window-mark.svg" alt="" aria-hidden="true">
+  </button>
   <p id="status" role="status">Loading engine…</p>
 </body>
 </html>

@@ -13,6 +13,7 @@ and Tauri**.
   Keep OS integration in Tauri instead of putting it in the portable core.
 - Hello Pixel now has a small Tauri host and dependency-free Rust/Wasm core.
   Rust provides its centered mark geometry and palette; a Canvas adapter draws it.
+  A floating button also expands the supplied SVG into a 5%-inset artwork view.
 - The existing C++/SDL macOS and iPhone demos, menu API, bookmark probe, and Swift
   Matte Overlay remain available while features migrate. They are not yet ported.
 
@@ -46,7 +47,9 @@ make bundle      # build the macOS .app
 
 The release executable is `target/release/simplicity-app`; the macOS app is
 `target/release/bundle/macos/Simplicity Engine.app`. The demo opens a dark window
-with a centered mint mark. Generated Wasm lives in `web/generated/` and is rebuilt
+with a centered mint mark and a floating SVG control; clicking it expands the
+artwork from the bottom-right corner into a view inset by 5% of the smaller
+viewport dimension. Generated Wasm lives in `web/generated/` and is rebuilt
 automatically before Tauri runs or builds. Node is build/test tooling, not an app
 runtime dependency. Equivalent npm commands are available in `package.json`.
 

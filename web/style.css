@@ -2,3 +2,53 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
 canvas { display: block; width: 100%; height: 100%; }
 #status { position: absolute; inset: 24px; color: #e1e8ed; font: 16px system-ui; }
 #status[hidden] { display: none; }
+
+#expanding-window {
+  position: fixed;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: #080c12;
+  border: 1px solid rgb(225 232 237 / 24%);
+  box-shadow: 0 20px 70px rgb(0 0 0 / 40%);
+  will-change: left, top, width, height, border-radius;
+}
+#expanding-window[hidden] { display: none; }
+#expanded-artwork {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 450ms ease;
+}
+#expanded-artwork.is-visible { opacity: 1; }
+#floating-expand {
+  position: fixed;
+  z-index: 21;
+  right: calc(5vw + 12px);
+  bottom: calc(5vh + 12px);
+  display: grid;
+  width: 64px;
+  height: 64px;
+  box-sizing: border-box;
+  padding: 8px;
+  place-items: center;
+  border: 1px solid rgb(0 0 0 / 18%);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 35%);
+  cursor: pointer;
+  transition: opacity 450ms ease, transform 450ms ease;
+}
+#floating-expand img { display: block; width: 44px; height: auto; }
+#floating-expand:hover:not(:disabled) { transform: scale(1.06); }
+#floating-expand:focus-visible { outline: 3px solid #40ffd0; outline-offset: 4px; }
+#floating-expand.is-fading { opacity: 0; transform: scale(.94); pointer-events: none; }
+#floating-expand:disabled { cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  #expanded-artwork, #floating-expand { transition-duration: 1ms; }
+}
