@@ -18,6 +18,13 @@ and Tauri**.
   anchored to the nearest display corner during expansion. Click the diagram to
   edit its source; Escape saves valid source and returns to the diagram. Clicking
   outside the window or pressing Escape from the diagram collapses the window.
+  The `WindowOptions` constructor in `src-tauri/src/lib.rs` controls
+  `always_on_top` (enabled by default). On macOS, when enabled, the app uses
+  accessory mode (no Dock icon) and joins fullscreen Spaces at screen-saver level.
+  It can appear above menus. Interaction with fullscreen games may interrupt
+  the game.
+  On macOS, the first click or drag on the inactive window is handled without
+  requiring a separate click to focus it.
 - The Rust core is built for native and Wasm targets. The Wasm artifact is tested
   independently; the native window uses the same Rust core for its geometry.
 - The existing C++/SDL macOS and iPhone demos, menu API, bookmark probe, and Swift

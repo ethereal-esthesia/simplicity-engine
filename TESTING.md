@@ -11,8 +11,10 @@ Run `make` to compile the native Tauri host. Run
 opens as a small transparent, borderless, rounded, always-on-top window at the
 monitor's bottom-right corner. Drag it to verify native window dragging without
 expansion, including a long drag; a click released less than five pixels from
-the press should expand it. Confirm the normal cursor is used by default and
-the optional drag-cursor setting shows grab/grabbing cursors. Click
+the press should expand it. On macOS, focus another application first and
+verify that a single click expands the window; repeat with a single click-drag
+to verify it moves without an initial focus click. Confirm the normal cursor is
+used by default and the optional drag-cursor setting shows grab/grabbing cursors. Click
 the SVG and confirm the window itself resizes smoothly at a 60 Hz target to a
 uniform inset equal to 5% of the smaller monitor dimension, with the small icon
 staying at the nearest display corner until the resize finishes; then the full
@@ -29,6 +31,11 @@ and press Escape to verify both shrink it back to its original dragged position
 with all four corners rounded throughout. Tauri command failures must be visible.
 On macOS, the native white backing matches the web surface and keeps the
 rounded corner stationary when the webview redraw lags.
+On macOS, switch between desktop Spaces and a fullscreen application such as
+Minecraft and verify the compact window remains visible and can be expanded,
+edited, and collapsed without changing the application's display mode.
+Set the `WindowOptions` constructor's `always_on_top` to false and rebuild to
+verify that other windows can cover it; restore it to true to verify it floats.
 `make bundle` builds the macOS app; test its launch separately from development.
 The [installer workflow](docs/test-installers.md) compiles other desktop targets,
 Android APKs, and iOS Simulator apps. Runtime and installation checks on those

@@ -2,11 +2,11 @@
 use block2::RcBlock;
 #[cfg(target_os = "macos")]
 use objc2_app_kit::{
-    NSAnimatablePropertyContainer, NSAnimationContext, NSAutoresizingMaskOptions, NSColor, NSView,
-    NSWindow,
+    NSAnimatablePropertyContainer, NSAnimationContext, NSAutoresizingMaskOptions, NSColor,
+    NSNormalWindowLevel, NSScreenSaverWindowLevel, NSView, NSWindow, NSWindowCollectionBehavior,
 };
 #[cfg(target_os = "macos")]
-use objc2_foundation::{NSPoint, NSRect, NSSize};
+use objc2_foundation::{NSPoint, NSProcessInfo, NSRect, NSSize};
 #[cfg(target_os = "macos")]
 use objc2_quartz_core::CAMediaTimingFunction;
 #[cfg(desktop)]
@@ -38,6 +38,58 @@ const WINDOW_ANIMATION_DURATION: Duration = Duration::from_millis(1500);
 const FRAME_INTERVAL: Duration = Duration::from_nanos(1_000_000_000 / 60);
 #[cfg(target_os = "macos")]
 const WINDOW_CORNER_RADIUS: f64 = 20.0;
+
+#[cfg(target_os = "macos")]
+fn overlay_collection_behavior(
+    behavior: NSWindowCollectionBehavior,
+    supports_cross_app_spaces: bool,
+) -> NSWindowCollectionBehavior {
+    let behavior = (behavior
+        & !(NSWindowCollectionBehavior::MoveToActiveSpace
+            | NSWindowCollectionBehavior::FullScreenPrimary
+            | NSWindowCollectionBehavior::FullScreenNone))
+        | NSWindowCollectionBehavior::CanJoinAllSpaces
+        | NSWindowCollectionBehavior::FullScreenAuxiliary;
+    if supports_cross_app_spaces {
+        (behavior & !(NSWindowCollectionBehavior::Primary | NSWindowCollectionBehavior::Auxiliary))
+            | NSWindowCollectionBehavior::CanJoinAllApplications
+    } else {
+        behavior
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn configure_overlay_window(
+    window: &WebviewWindow,
+    original_behavior: NSWindowCollectionBehavior,
+    enabled: bool,
+) -> Result<(), String> {
+    let pointer = window.ns_window().map_err(|error| error.to_string())?;
+    let ns_window = unsafe { &*pointer.cast::<NSWindow>() };
+    let supports_cross_app_spaces = NSProcessInfo::processInfo()
+        .operatingSystemVersion()
+        .majorVersion
+        >= 13;
+    ns_window.setCollectionBehavior(if enabled {
+        overlay_collection_behavior(original_behavior, supports_cross_app_spaces)
+    } else {
+        original_behavior
+    });
+    ns_window.setLevel(if enabled {
+        NSScreenSaverWindowLevel
+    } else {
+        NSNormalWindowLevel
+    });
+    if enabled {
+        ns_window.setHidesOnDeactivate(false);
+    }
+    Ok(())
+}
+
+#[cfg(desktop)]
+struct WindowOptions {
+    always_on_top: bool,
+}
 
 #[cfg(desktop)]
 #[derive(Clone, Copy)]
@@ -522,15 +574,30 @@ pub fn run() {
         std::process::exit(2);
     });
     #[cfg(desktop)]
+    let window_options = WindowOptions {
+        always_on_top: true,
+    };
+    #[cfg(desktop)]
     let builder = builder
         .manage(diagram)
         .manage(WindowState::default())
-        .setup(|app| {
+        .setup(move |app| {
             let window = app
                 .get_webview_window("main")
                 .ok_or_else(|| std::io::Error::other("The main window is not configured"))?;
             #[cfg(target_os = "macos")]
-            round_appkit_window(&window).map_err(std::io::Error::other)?;
+            {
+                if window_options.always_on_top {
+                    app.handle()
+                        .set_activation_policy(tauri::ActivationPolicy::Accessory)?;
+                }
+                round_appkit_window(&window).map_err(std::io::Error::other)?;
+                let pointer = window.ns_window()?;
+                let ns_window = unsafe { &*pointer.cast::<NSWindow>() };
+                let original_behavior = ns_window.collectionBehavior();
+                configure_overlay_window(&window, original_behavior, window_options.always_on_top)
+                    .map_err(std::io::Error::other)?;
+            }
             let target = target_edges_for_window(&window).map_err(std::io::Error::other)?;
             let size = window.outer_size()?;
             let scale_factor = window.scale_factor()?;
@@ -540,7 +607,8 @@ pub fn run() {
                 f64::from(size.height) / scale_factor,
             );
             window.set_position(LogicalPosition::new(icon.left, icon.top))?;
-            window.set_always_on_top(true)?;
+            #[cfg(not(target_os = "macos"))]
+            window.set_always_on_top(window_options.always_on_top)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -563,6 +631,30 @@ pub fn run() {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn overlay_joins_fullscreen_spaces_without_conflicting_behaviors() {
+        let behavior = NSWindowCollectionBehavior::MoveToActiveSpace
+            | NSWindowCollectionBehavior::FullScreenPrimary
+            | NSWindowCollectionBehavior::FullScreenNone
+            | NSWindowCollectionBehavior::Primary
+            | NSWindowCollectionBehavior::IgnoresCycle;
+
+        assert_eq!(
+            overlay_collection_behavior(behavior, true),
+            NSWindowCollectionBehavior::CanJoinAllSpaces
+                | NSWindowCollectionBehavior::FullScreenAuxiliary
+                | NSWindowCollectionBehavior::CanJoinAllApplications
+                | NSWindowCollectionBehavior::IgnoresCycle
+        );
+        assert_eq!(
+            overlay_collection_behavior(behavior, false),
+            NSWindowCollectionBehavior::CanJoinAllSpaces
+                | NSWindowCollectionBehavior::FullScreenAuxiliary
+                | NSWindowCollectionBehavior::Primary
+                | NSWindowCollectionBehavior::IgnoresCycle
+        );
+    }
 
     #[test]
     fn appkit_frame_updates_position_and_size_from_one_edge_rectangle() {
