@@ -12,10 +12,10 @@ and Tauri**.
 - Keep JavaScript thin: use Tauri commands for OS integration and keep portable
   geometry in the shared Rust core.
 - The Tauri host opens as a small transparent, frameless, draggable window. Its
-  supplied SVG button expands the native window to a uniform inset equal to 5% of
-  the current monitor's shorter dimension with a white background, then reveals
-  the full artwork. Clicking outside the window or pressing Escape shrinks it
-  back to its icon.
+  supplied SVG button stays above other windows and expands the native window
+  to a uniform inset equal to 5% of the current monitor's shorter dimension with
+  a white background, then reveals the full artwork. Clicking outside the window
+  or pressing Escape shrinks it back to its icon.
 - The Rust core is built for native and Wasm targets. The Wasm artifact is tested
   independently; the native window uses the same Rust core for its geometry.
 - The existing C++/SDL macOS and iPhone demos, menu API, bookmark probe, and Swift

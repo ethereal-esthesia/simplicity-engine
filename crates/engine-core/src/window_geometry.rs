@@ -104,4 +104,29 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn interpolation_preserves_fractional_edge_positions() {
+        let start = WindowEdges {
+            left: 0.0,
+            top: 0.0,
+            right: 10.0,
+            bottom: 10.0,
+        };
+        let deltas = WindowEdges {
+            left: 1.0,
+            top: 1.0,
+            right: 1.0,
+            bottom: 1.0,
+        };
+        assert_eq!(
+            interpolate_edges(start, deltas, 0.5),
+            WindowEdges {
+                left: 0.5,
+                top: 0.5,
+                right: 10.5,
+                bottom: 10.5,
+            }
+        );
+    }
 }

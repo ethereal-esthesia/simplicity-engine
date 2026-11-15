@@ -15,6 +15,7 @@
         "width": 88,
         "height": 88,
         "resizable": false,
+        "alwaysOnTop": true,
         "decorations": false,
         "transparent": true,
         "shadow": true,
