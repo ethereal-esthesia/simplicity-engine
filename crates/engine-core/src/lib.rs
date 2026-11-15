@@ -1,6 +1,8 @@
 //! Host-independent Hello Pixel geometry and colors. Exported scalars keep the
 //! initial Wasm interface allocation-free; no browser or Tauri dependencies.
 
+pub mod fast_rng;
+
 #[no_mangle]
 pub extern "C" fn abi_version() -> u32 {
     1

@@ -45,9 +45,10 @@ ctest --test-dir build/release --output-on-failure
 python3 tests/test_ios_setup.py
 ```
 
-CTest covers shared menu behavior, a headless Menu Studio run, SDL initialization,
-and RNG smoke/vector checks. `./scripts/menu_demo.sh test host` also verifies
-native AppKit menu construction, state, and dispatch.
+CTest covers legacy menu behavior, a headless Menu Studio run, and SDL
+initialization. Portable RNG behavior is tested in `simplicity-core`.
+`./scripts/menu_demo.sh test host` also verifies native AppKit menu construction,
+state, and dispatch.
 
 For iPhone simulator builds and runtime self-tests:
 
