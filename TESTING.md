@@ -4,7 +4,8 @@
 
 Run `make test` for native Rust tests, actual Wasm execution under Node, and the
 video player adapter tests. Run `cargo test --locked -p video-player` for its
-command-line path validation.
+command-line path validation. On macOS, run `cargo test --locked -p
+simplicity-app` to exercise the AppKit frame-coordinate mapping.
 Run `make` to compile the native Tauri host. Run `make run` to verify the app
 opens as a small transparent, borderless, rounded, always-on-top window at the
 monitor's bottom-right corner. Drag it to verify native window dragging. Click

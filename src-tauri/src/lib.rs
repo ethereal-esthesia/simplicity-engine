@@ -1,15 +1,23 @@
+#[cfg(target_os = "macos")]
+use objc2_app_kit::NSWindow;
+#[cfg(target_os = "macos")]
+use objc2_foundation::{NSPoint, NSRect, NSSize};
 #[cfg(desktop)]
 use simplicity_core::window_geometry::{
     bottom_right_edges, edge_deltas, interpolate_edges, target_edges, WindowEdges,
 };
+#[cfg(target_os = "macos")]
+use std::sync::mpsc;
 #[cfg(desktop)]
 use std::thread;
 #[cfg(desktop)]
 use std::time::{Duration, Instant};
+#[cfg(all(desktop, not(target_os = "macos")))]
+use tauri::LogicalSize;
 #[cfg(desktop)]
 use tauri::Manager;
 #[cfg(desktop)]
-use tauri::{LogicalPosition, LogicalSize, WebviewWindow};
+use tauri::{LogicalPosition, WebviewWindow};
 
 #[cfg(desktop)]
 const WINDOW_ANIMATION_DURATION: Duration = Duration::from_millis(1500);
@@ -39,7 +47,7 @@ fn target_edges_for_window(window: &WebviewWindow) -> Result<WindowEdges, String
     ))
 }
 
-#[cfg(desktop)]
+#[cfg(all(desktop, not(target_os = "macos")))]
 fn apply_edges(window: &WebviewWindow, edges: WindowEdges) -> Result<(), String> {
     let position = LogicalPosition::new(edges.left, edges.top);
     let size = LogicalSize::new(
@@ -50,6 +58,86 @@ fn apply_edges(window: &WebviewWindow, edges: WindowEdges) -> Result<(), String>
         .set_position(position)
         .map_err(|error| error.to_string())?;
     window.set_size(size).map_err(|error| error.to_string())
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct AppKitFrame {
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+#[cfg(target_os = "macos")]
+fn current_appkit_frame(window: &WebviewWindow) -> Result<AppKitFrame, String> {
+    let (sender, receiver) = mpsc::sync_channel(1);
+    let dispatch_window = window.clone();
+    window
+        .run_on_main_thread(move || {
+            let frame = dispatch_window
+                .ns_window()
+                .map_err(|error| error.to_string())
+                .map(|pointer| {
+                    let ns_window = unsafe { &*pointer.cast::<NSWindow>() };
+                    let frame = ns_window.frame();
+                    AppKitFrame {
+                        x: frame.origin.x,
+                        y: frame.origin.y,
+                        width: frame.size.width,
+                        height: frame.size.height,
+                    }
+                });
+            let _ = sender.send(frame);
+        })
+        .map_err(|error| error.to_string())?;
+    receiver.recv().map_err(|error| error.to_string())?
+}
+
+#[cfg(target_os = "macos")]
+fn appkit_frame_for_edges(
+    start_frame: AppKitFrame,
+    start_edges: WindowEdges,
+    edges: WindowEdges,
+) -> AppKitFrame {
+    AppKitFrame {
+        x: start_frame.x + edges.left - start_edges.left,
+        // AppKit grows upward from the bottom edge; Tauri geometry starts at the top.
+        y: start_frame.y - edges.bottom + start_edges.bottom,
+        width: edges.right - edges.left,
+        height: edges.bottom - edges.top,
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn set_appkit_frame(window: &WebviewWindow, frame: AppKitFrame) -> Result<(), String> {
+    let (sender, receiver) = mpsc::sync_channel(1);
+    let dispatch_window = window.clone();
+    window
+        .run_on_main_thread(move || {
+            let result = dispatch_window
+                .ns_window()
+                .map_err(|error| error.to_string())
+                .map(|pointer| {
+                    let ns_window = unsafe { &*pointer.cast::<NSWindow>() };
+                    ns_window.setFrame_display(
+                        NSRect {
+                            origin: NSPoint {
+                                x: frame.x,
+                                y: frame.y,
+                            },
+                            size: NSSize {
+                                width: frame.width,
+                                height: frame.height,
+                            },
+                        },
+                        true,
+                    );
+                });
+            let _ = sender.send(result);
+        })
+        .map_err(|error| error.to_string())?;
+    receiver.recv().map_err(|error| error.to_string())?
 }
 
 #[cfg(desktop)]
@@ -72,6 +160,8 @@ fn animate_window_to(
     reduced_motion: bool,
 ) -> Result<(), String> {
     let start = current_edges(&window)?;
+    #[cfg(target_os = "macos")]
+    let start_frame = current_appkit_frame(&window)?;
     let deltas = edge_deltas(start, target);
     let duration = if reduced_motion {
         Duration::from_millis(1)
@@ -83,7 +173,11 @@ fn animate_window_to(
 
     loop {
         let progress = (started_at.elapsed().as_secs_f64() / duration.as_secs_f64()).min(1.0);
-        apply_edges(&window, interpolate_edges(start, deltas, progress))?;
+        let edges = interpolate_edges(start, deltas, progress);
+        #[cfg(target_os = "macos")]
+        set_appkit_frame(&window, appkit_frame_for_edges(start_frame, start, edges))?;
+        #[cfg(not(target_os = "macos"))]
+        apply_edges(&window, edges)?;
         if progress >= 1.0 {
             return Ok(());
         }
@@ -168,4 +262,41 @@ pub fn run() {
     builder
         .run(tauri::generate_context!())
         .expect("could not run Simplicity Engine");
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn appkit_frame_updates_position_and_size_from_one_edge_rectangle() {
+        let start_frame = AppKitFrame {
+            x: 200.0,
+            y: 500.0,
+            width: 100.0,
+            height: 100.0,
+        };
+        let start_edges = WindowEdges {
+            left: 100.0,
+            top: 200.0,
+            right: 200.0,
+            bottom: 300.0,
+        };
+        let edges = WindowEdges {
+            left: 110.0,
+            top: 150.0,
+            right: 310.0,
+            bottom: 350.0,
+        };
+
+        assert_eq!(
+            appkit_frame_for_edges(start_frame, start_edges, edges),
+            AppKitFrame {
+                x: 210.0,
+                y: 450.0,
+                width: 200.0,
+                height: 200.0,
+            }
+        );
+    }
 }

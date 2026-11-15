@@ -15,5 +15,9 @@ tauri-build = { version = "2", features = [] }
 simplicity-core = { path = "../crates/engine-core" }
 tauri = { version = "2", features = ["macos-private-api"] }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.3.2", features = ["NSWindow", "std"] }
+objc2-foundation = { version = "0.3.2", features = ["NSGeometry", "objc2-core-foundation", "std"] }
+
 [features]
 custom-protocol = ["tauri/custom-protocol"]
