@@ -15,9 +15,11 @@ and Tauri**.
   supplied SVG button stays above other windows and expands the native window
   to a uniform inset equal to 5% of the current monitor's shorter dimension with
   a white background, then reveals a Mermaid diagram. On macOS, the icon stays
-  anchored to the nearest display corner during expansion. Click the diagram to
-  edit its source; Escape saves valid source and returns to the diagram. Clicking
-  outside the window or pressing Escape from the diagram collapses the window.
+  anchored to the nearest display corner during expansion. Click a flowchart
+  node to toggle its disabled styling and save the change to the source file.
+  Click the diagram background to edit the source; Escape saves valid source and
+  returns to the diagram. Clicking outside the window or pressing Escape from
+  the diagram collapses the window.
   The `WindowOptions` constructor in `src-tauri/src/lib.rs` controls
   `always_on_top` (enabled by default). On macOS, when enabled, the app uses
   accessory mode (no Dock icon) and joins fullscreen Spaces at screen-saver level.

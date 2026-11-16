@@ -18,7 +18,10 @@ used by default and the optional drag-cursor setting shows grab/grabbing cursors
 the SVG and confirm the window itself resizes smoothly at a 60 Hz target to a
 uniform inset equal to 5% of the smaller monitor dimension, with the small icon
 staying at the nearest display corner until the resize finishes; then the full
-diagram fades in over white. Click the diagram to edit its Mermaid source.
+diagram fades in over white. Click a flowchart node twice to disable and
+re-enable it, verifying each change is saved in the Mermaid file. Check an
+existing `disabled` class definition and a shared `class A,B disabled` assignment.
+Click the diagram background to edit its Mermaid source.
 Verify long lines wrap and a vertical scrollbar appears when needed; Escape
 must save valid edits and fade back to the updated diagram. Invalid source
 must keep the editor open with an error and leave the file unchanged. Test a
