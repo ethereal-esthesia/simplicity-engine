@@ -22,6 +22,9 @@ diagram fades in over white. Click a flowchart node twice to disable and
 re-enable it, verifying each change is saved in the Mermaid file. Check an
 existing `disabled` class definition and a shared `class A,B disabled` assignment.
 Click the diagram background to edit its Mermaid source.
+Verify that dragging or double-clicking diagram labels does not select them,
+that the icon cannot be dragged as an image, and that source text remains
+selectable in the editor.
 Verify long lines wrap and a vertical scrollbar appears when needed; Escape
 must save valid edits and fade back to the updated diagram. Invalid source
 must keep the editor open with an error and leave the file unchanged. Test a
