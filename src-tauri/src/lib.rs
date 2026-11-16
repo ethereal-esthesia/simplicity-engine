@@ -92,6 +92,12 @@ struct WindowOptions {
 }
 
 #[cfg(desktop)]
+struct CompactMenu(tauri::menu::Menu<tauri::Wry>);
+
+#[cfg(desktop)]
+const CLOSE_MENU_ITEM: &str = "compact-close";
+
+#[cfg(desktop)]
 #[derive(Clone, Copy)]
 struct Expansion {
     #[cfg(not(target_os = "macos"))]
@@ -547,6 +553,22 @@ fn start_window_dragging(window: WebviewWindow) -> Result<(), String> {
 
 #[cfg(desktop)]
 #[tauri::command]
+fn show_compact_menu(
+    window: WebviewWindow,
+    menu: tauri::State<'_, CompactMenu>,
+    x: f64,
+    y: f64,
+) -> Result<(), String> {
+    if !x.is_finite() || !y.is_finite() {
+        return Err("Invalid context menu position".to_owned());
+    }
+    window
+        .popup_menu_at(&menu.0, LogicalPosition::new(x, y))
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(desktop)]
+#[tauri::command]
 fn load_diagram_source(file: tauri::State<'_, diagram_file::DiagramFile>) -> String {
     file.source.clone()
 }
@@ -585,6 +607,17 @@ pub fn run() {
             let window = app
                 .get_webview_window("main")
                 .ok_or_else(|| std::io::Error::other("The main window is not configured"))?;
+            let close =
+                tauri::menu::MenuItem::with_id(app, CLOSE_MENU_ITEM, "Close", true, None::<&str>)?;
+            let menu = tauri::menu::Menu::with_items(app, &[&close])?;
+            app.manage(CompactMenu(menu));
+            window.on_menu_event(|window, event| {
+                if event.id().as_ref() == CLOSE_MENU_ITEM {
+                    if let Err(error) = window.close() {
+                        eprintln!("Cannot close the window: {error}");
+                    }
+                }
+            });
             #[cfg(target_os = "macos")]
             {
                 if window_options.always_on_top {
@@ -618,6 +651,7 @@ pub fn run() {
             expand_window,
             shrink_window,
             start_window_dragging,
+            show_compact_menu,
             load_diagram_source,
             save_diagram_source
         ]);

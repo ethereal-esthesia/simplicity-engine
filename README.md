@@ -25,6 +25,7 @@ and Tauri**.
   the game.
   On macOS, the first click or drag on the inactive window is handled without
   requiring a separate click to focus it.
+  Right-click the compact window and choose **Close** to exit.
 - The Rust core is built for native and Wasm targets. The Wasm artifact is tested
   independently; the native window uses the same Rust core for its geometry.
 - The existing C++/SDL macOS and iPhone demos, menu API, bookmark probe, and Swift

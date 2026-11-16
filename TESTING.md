@@ -36,6 +36,9 @@ Minecraft and verify the compact window remains visible and can be expanded,
 edited, and collapsed without changing the application's display mode.
 Set the `WindowOptions` constructor's `always_on_top` to false and rebuild to
 verify that other windows can cover it; restore it to true to verify it floats.
+Right-click the compact window and verify that the native menu contains only
+Close, that dismissing the menu leaves the app open, and that Close exits it.
+Verify that right-clicking the expanded editor retains its normal context menu.
 `make bundle` builds the macOS app; test its launch separately from development.
 The [installer workflow](docs/test-installers.md) compiles other desktop targets,
 Android APKs, and iOS Simulator apps. Runtime and installation checks on those

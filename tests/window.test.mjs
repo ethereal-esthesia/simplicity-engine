@@ -22,7 +22,13 @@ async function windowApp(invoke) {
   };
   const status = {};
   const artwork = { classList: { add() {}, remove() {} } };
-  const elements = { '#status': status, '#floating-expand': button, '#expanded-artwork': artwork };
+  const surface = {
+    addEventListener(name, callback) { listeners[`surface:${name}`] = callback; },
+  };
+  const elements = {
+    '#status': status, '#floating-expand': button, '#expanded-artwork': artwork,
+    '#window-surface': surface,
+  };
   const context = {
     document: {
       querySelector: selector => elements[selector],
@@ -66,6 +72,45 @@ test('prepares the selected corner before expanding and collapses on Escape', as
   assert.deepEqual(commands, [
     'is_desktop', 'load_diagram_source', 'prepare_window_expansion', 'expand_window', 'shrink_window',
   ]);
+});
+
+test('right-click opens the compact menu without replacing the expanded context menu', async () => {
+  const commands = [];
+  const app = await windowApp(async (command, args) => {
+    commands.push({ command, args });
+    if (command === 'is_desktop') return true;
+    if (command === 'load_diagram_source') return 'flowchart TD\n  A --> B';
+    if (command === 'prepare_window_expansion') return 'bottom-right';
+  });
+  let prevented = false;
+  app.listeners['surface:contextmenu']({
+    clientX: 45, clientY: 23, preventDefault() { prevented = true; },
+  });
+  assert.equal(prevented, true);
+  assert.equal(commands.at(-1).command, 'show_compact_menu');
+  assert.equal(commands.at(-1).args.x, 45);
+  assert.equal(commands.at(-1).args.y, 23);
+
+  app.listeners.click({ detail: 0 });
+  await new Promise(resolve => setImmediate(resolve));
+  prevented = false;
+  const count = commands.length;
+  app.listeners['surface:contextmenu']({
+    clientX: 20, clientY: 20, preventDefault() { prevented = true; },
+  });
+  assert.equal(prevented, false);
+  assert.equal(commands.length, count);
+});
+
+test('context menu errors are shown to the user', async () => {
+  const app = await windowApp(async command => {
+    if (command === 'is_desktop') return true;
+    if (command === 'load_diagram_source') return 'flowchart TD\n  A --> B';
+    if (command === 'show_compact_menu') throw new Error('menu unavailable');
+  });
+  app.listeners['surface:contextmenu']({ clientX: 0, clientY: 0, preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(app.status.textContent, /menu unavailable/);
 });
 
 test('cancels a prepared expansion if the animation command fails', async () => {

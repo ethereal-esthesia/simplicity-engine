@@ -3,6 +3,7 @@ import { createDiagramViewer } from './diagram-viewer.mjs';
 import { renderMermaid } from './generated/mermaid-renderer.mjs';
 
 const status = document.querySelector('#status');
+const windowSurface = document.querySelector('#window-surface');
 const expandButton = document.querySelector('#floating-expand');
 const expandedArtwork = document.querySelector('#expanded-artwork');
 const diagramRoot = document.querySelector('#diagram-view');
@@ -124,6 +125,12 @@ setupWindowInteractions({
   startDragging: () => invoke('start_window_dragging'),
   onActivate: expandWindow,
   onError: showError,
+});
+
+windowSurface.addEventListener('contextmenu', event => {
+  if (!isDesktop || isExpanded || isExpanding || isShrinking) return;
+  event.preventDefault();
+  invoke('show_compact_menu', { x: event.clientX, y: event.clientY }).catch(showError);
 });
 
 addEventListener('blur', requestShrink);
