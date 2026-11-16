@@ -2891,6 +2891,7 @@ name = "simplicity-app"
 version = "0.1.0"
 dependencies = [
  "block2",
+ "cc",
  "objc2-app-kit",
  "objc2-foundation",
  "objc2-quartz-core",

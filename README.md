@@ -29,7 +29,12 @@ and Tauri**.
   the game.
   On macOS, the first click or drag on the inactive window is handled without
   requiring a separate click to focus it.
-  Right-click the compact window and choose **Close** to exit.
+  On macOS 15 or later, right-click the compact window and choose **Settings**
+  to select a recording folder and a maximum frame rate (24, 30, or 60 fps),
+  then **Record Screen** to capture the display
+  containing the window and system audio. Right-click again to stop and save
+  before the menu opens. Left-click still expands the diagram. **Close** exits.
+  Recording requests macOS screen-recording permission when needed.
 - The Rust core is built for native and Wasm targets. The Wasm artifact is tested
   independently; the native window uses the same Rust core for its geometry.
 - The existing C++/SDL macOS and iPhone demos, menu API, bookmark probe, and Swift
@@ -79,6 +84,18 @@ To launch without Make, use
 `npm run dev -- /path/to/diagram.mmd` or
 `target/release/simplicity-app /path/to/diagram.mmd`. The renderer is bundled
 locally at build time and does not require network access at runtime.
+On macOS, the first build also downloads verified FFmpeg source and builds a
+minimal local encoder. Packaged apps include the encoder, its license, source,
+and build script; Homebrew or FFmpeg is not needed at runtime.
+
+Recordings target 1920×1080 at up to the selected frame rate (60 fps by default),
+H.264 video at 12 Mbps and stereo AAC at 384 kbps in MP4. The maximum keyframe
+interval is half the selected frame rate. Actual frame and bit rates vary with
+the source. Audio is first stored losslessly in a temporary file in the chosen
+folder, then encoded after capture stops; long recordings require extra disk
+space and processing time.
+If encoding fails, the temporary recording is retained for recovery. YouTube
+re-encodes uploads, so upload processing is not lossless.
 
 The reusable `setupWindowInteractions` initializer in
 [`web/window-interactions.mjs`](web/window-interactions.mjs) uses the normal

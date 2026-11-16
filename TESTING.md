@@ -4,8 +4,10 @@
 
 Run `make test` for native Rust tests, actual Wasm execution under Node, and the
 video player adapter tests. Run `cargo test --locked -p video-player` for its
-command-line path validation. On macOS, run `cargo test --locked -p
-simplicity-app` to exercise the AppKit frame-coordinate mapping.
+command-line path validation. On macOS, run
+`sh scripts/build-recording-encoder.sh` before `cargo test --locked -p
+simplicity-app` to prepare bundled resources and exercise the AppKit
+frame-coordinate mapping.
 Run `make` to compile the native Tauri host. Run
 `make run DIAGRAM=/path/to/diagram.mmd` to verify the app
 opens as a small transparent, borderless, rounded, always-on-top window at the
@@ -45,8 +47,19 @@ Minecraft and verify the compact window remains visible and can be expanded,
 edited, and collapsed without changing the application's display mode.
 Set the `WindowOptions` constructor's `always_on_top` to false and rebuild to
 verify that other windows can cover it; restore it to true to verify it floats.
-Right-click the compact window and verify that the native menu contains only
-Close, that dismissing the menu leaves the app open, and that Close exits it.
+On macOS 15 or later, right-click the compact window and verify that the menu
+contains Record Screen, Settings, and Close. In Settings, verify the default
+60 fps and that 24, 30, and 60 fps persist after saving; Cancel must leave the
+folder and frame rate unchanged. Choose a writable recording folder and record
+the current display with system audio at each rate. Check that the actual frame
+rate does not exceed the selected maximum and the keyframe interval is no more
+than half that rate. Right-click to
+stop, verify that the menu appears only after saving, and inspect the resulting
+timestamped MP4 for 1080p H.264 video and stereo AAC audio. Verify permission
+denial, an unwritable folder, and encoder failures are reported. Check that
+left-click still expands the diagram during recording. Dismissing the menu
+leaves the app open, and Close exits it. On other desktop platforms the menu
+contains Close only.
 Verify that right-clicking the expanded editor retains its normal context menu.
 `make bundle` builds the macOS app; test its launch separately from development.
 The [installer workflow](docs/test-installers.md) compiles other desktop targets,

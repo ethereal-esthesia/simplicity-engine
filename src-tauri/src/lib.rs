@@ -97,6 +97,16 @@ struct CompactMenu(tauri::menu::Menu<tauri::Wry>);
 #[cfg(desktop)]
 const CLOSE_MENU_ITEM: &str = "compact-close";
 
+#[cfg(target_os = "macos")]
+extern "C" {
+    fn simplicity_show_recording_menu(
+        window: *mut std::ffi::c_void,
+        x: f64,
+        y: f64,
+        encoder: *const std::ffi::c_char,
+    );
+}
+
 #[cfg(desktop)]
 #[derive(Clone, Copy)]
 struct Expansion {
@@ -562,6 +572,44 @@ fn show_compact_menu(
     if !x.is_finite() || !y.is_finite() {
         return Err("Invalid context menu position".to_owned());
     }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = &menu.0;
+        let pointer = window.ns_window().map_err(|error| error.to_string())? as usize;
+        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+        let bundled = executable
+            .parent()
+            .and_then(std::path::Path::file_name)
+            .is_some_and(|name| name == "MacOS");
+        let encoder = if !bundled {
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../node_modules/.cache/simplicity-recording/ffmpeg")
+        } else {
+            window
+                .app_handle()
+                .path()
+                .resource_dir()
+                .map_err(|error| error.to_string())?
+                .join("ffmpeg")
+        };
+        let encoder = std::ffi::CString::new(encoder.as_os_str().as_encoded_bytes())
+            .map_err(|error| format!("Invalid encoder path: {error}"))?;
+        let keep_alive = window.clone();
+        return window
+            .run_on_main_thread(move || {
+                let _ = keep_alive;
+                unsafe {
+                    simplicity_show_recording_menu(
+                        pointer as *mut std::ffi::c_void,
+                        x,
+                        y,
+                        encoder.as_ptr(),
+                    )
+                };
+            })
+            .map_err(|error| error.to_string());
+    }
+    #[cfg(not(target_os = "macos"))]
     window
         .popup_menu_at(&menu.0, LogicalPosition::new(x, y))
         .map_err(|error| error.to_string())
