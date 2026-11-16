@@ -9,12 +9,12 @@ use objc2_app_kit::{
 use objc2_foundation::{NSPoint, NSProcessInfo, NSRect, NSSize};
 #[cfg(target_os = "macos")]
 use objc2_quartz_core::CAMediaTimingFunction;
-#[cfg(desktop)]
-use simplicity_core::window_geometry::{
-    bottom_right_edges, nearest_corner, target_edges, WindowCorner, WindowEdges,
-};
 #[cfg(all(desktop, not(target_os = "macos")))]
 use simplicity_core::window_geometry::{edge_deltas, interpolate_edges};
+#[cfg(desktop)]
+use simplicity_core::window_geometry::{
+    nearest_corner, target_edges, top_right_edges, WindowCorner, WindowEdges,
+};
 #[cfg(target_os = "macos")]
 use std::sync::mpsc;
 #[cfg(desktop)]
@@ -634,7 +634,7 @@ pub fn run() {
             let target = target_edges_for_window(&window).map_err(std::io::Error::other)?;
             let size = window.outer_size()?;
             let scale_factor = window.scale_factor()?;
-            let icon = bottom_right_edges(
+            let icon = top_right_edges(
                 target,
                 f64::from(size.width) / scale_factor,
                 f64::from(size.height) / scale_factor,

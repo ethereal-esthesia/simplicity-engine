@@ -63,7 +63,7 @@ make bundle      # build the macOS .app
 
 The release executable is `target/release/simplicity-app`; the macOS app is
 `target/release/bundle/macos/Simplicity Engine.app`. The compact window is placed
-at the monitor's bottom-right corner. Drag it to reposition; click the SVG to
+at the monitor's top-right corner. Drag it to reposition; click the SVG to
 resize the actual native window and reveal the diagram after expansion. A source
 path is required; if the file is missing, the terminal asks before creating it.
 Empty files open an editor with commented usage hints. Invalid diagrams and

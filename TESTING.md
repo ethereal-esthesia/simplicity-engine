@@ -9,7 +9,7 @@ simplicity-app` to exercise the AppKit frame-coordinate mapping.
 Run `make` to compile the native Tauri host. Run
 `make run DIAGRAM=/path/to/diagram.mmd` to verify the app
 opens as a small transparent, borderless, rounded, always-on-top window at the
-monitor's bottom-right corner. Drag it to verify native window dragging without
+monitor's top-right corner. Drag it to verify native window dragging without
 expansion, including a long drag; a click released less than five pixels from
 the press should expand it. On macOS, focus another application first and
 verify that a single click expands the window; repeat with a single click-drag

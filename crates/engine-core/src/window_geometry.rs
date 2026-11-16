@@ -44,6 +44,15 @@ pub fn bottom_right_edges(container: WindowEdges, width: f64, height: f64) -> Wi
     }
 }
 
+pub fn top_right_edges(container: WindowEdges, width: f64, height: f64) -> WindowEdges {
+    WindowEdges {
+        left: container.right - width,
+        top: container.top,
+        right: container.right,
+        bottom: container.top + height,
+    }
+}
+
 pub fn edge_deltas(start: WindowEdges, target: WindowEdges) -> WindowEdges {
     WindowEdges {
         left: target.left - start.left,
@@ -122,6 +131,22 @@ mod tests {
                 bottom: 570.0,
             }
         );
+    }
+
+    #[test]
+    fn compact_window_is_anchored_to_the_targets_top_right_corner() {
+        let target = target_edges(-1000.0, -500.0, 1000.0, 800.0);
+        let window = top_right_edges(target, 88.0, 60.0);
+        assert_eq!(
+            window,
+            WindowEdges {
+                left: -128.0,
+                top: -460.0,
+                right: -40.0,
+                bottom: -400.0,
+            }
+        );
+        assert_eq!(nearest_corner(window, target), WindowCorner::TopRight);
     }
 
     #[test]
