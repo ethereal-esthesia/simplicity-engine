@@ -17,6 +17,8 @@ and Tauri**.
   a white background, then reveals a Mermaid diagram. On macOS, the icon stays
   anchored to the nearest display corner during expansion. Click a flowchart
   node to toggle its disabled styling and save the change to the source file.
+  Click-managed nodes are listed together in a commented section at the end of
+  the file; an existing `disabled` class definition is reused.
   Click the diagram background to edit the source; Escape saves valid source and
   returns to the diagram. Clicking outside the window or pressing Escape from
   the diagram collapses the window.

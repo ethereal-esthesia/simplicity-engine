@@ -93,8 +93,7 @@ test('clicking a flowchart node saves its disabled class and clicking again remo
   });
   await app.viewer.load('flowchart TD\n  A[Start] --> B[Finish]\n');
   await clickNode(app, 'A', false);
-  assert.match(saved[0], /classDef disabled fill:#e0e0e0,stroke:#cccccc,color:#888888;/);
-  assert.match(saved[0], /class A disabled;/);
+  assert.equal(saved[0], 'flowchart TD\n  A[Start] --> B[Finish]\n%% Nodes disabled by clicking (managed automatically)\nclassDef disabled fill:#e0e0e0,stroke:#cccccc,color:#888888;\nclass A disabled;\n');
   assert.equal(app.viewer.isEditing(), false);
   await clickNode(app, 'A', true);
   assert.doesNotMatch(saved[1], /class A disabled/);
@@ -112,7 +111,7 @@ test('enabling preserves other nodes, labels and an existing disabled style', as
   const source = 'flowchart TD\n  A["class A disabled"]:::disabled --> B\n  class A,B disabled;\n  classDef disabled fill:red;\n';
   await app.viewer.load(source);
   await clickNode(app, 'A', true);
-  assert.equal(saved[0], 'flowchart TD\n  A["class A disabled"] --> B\n  class B disabled;\n  classDef disabled fill:red;\n');
+  assert.equal(saved[0], 'flowchart TD\n  A["class A disabled"] --> B\n  class B disabled;\n  classDef disabled fill:red;\n%% Nodes disabled by clicking (managed automatically)\n');
 });
 
 test('failed toggle leaves the source and displayed diagram unchanged', async () => {
@@ -139,7 +138,7 @@ test('reuses an existing style and ignores repeated clicks during a save', async
   await new Promise(resolve => setImmediate(resolve));
   await clickNode(app, 'A', false);
   assert.equal(saved.length, 1);
-  assert.equal(saved[0], `${source}class A disabled;\r\n`);
+  assert.equal(saved[0], `${source}%% Nodes disabled by clicking (managed automatically)\r\nclass A disabled;\r\n`);
   finishSave();
   await saving;
 });
@@ -151,4 +150,71 @@ test('does not save when the rendered node still has the old class', async () =>
   await clickNode(app, 'A', true);
   assert.equal(saved.length, 0);
   assert.match(app.error.textContent, /Cannot safely toggle A/);
+});
+
+test('maintains one comma-separated list at the end of the source', async () => {
+  const saved = [];
+  const app = fixture(async source => source, async source => saved.push(source));
+  app.diagram.ownerDocument.createElement = () => ({
+    set innerHTML(value) { this.source = value; },
+    querySelectorAll() {
+      const ids = this.source.match(/^class ([\w,]+) disabled;$/m)?.[1].split(',') ?? [];
+      return ['A', 'B', 'C'].map(id => node(id, ids.includes(id)));
+    },
+  });
+  await app.viewer.load('flowchart TD\n A --> B --> C');
+  await clickNode(app, 'A', false);
+  await clickNode(app, 'B', false);
+  await clickNode(app, 'C', false);
+  assert.equal(saved[2], 'flowchart TD\n A --> B --> C\n%% Nodes disabled by clicking (managed automatically)\nclassDef disabled fill:#e0e0e0,stroke:#cccccc,color:#888888;\nclass A,B,C disabled;\n');
+  await clickNode(app, 'B', true);
+  assert.match(saved[3], /class A,C disabled;\n$/);
+  await clickNode(app, 'A', true);
+  await clickNode(app, 'C', true);
+  assert.equal(saved[5], 'flowchart TD\n A --> B --> C\n%% Nodes disabled by clicking (managed automatically)\nclassDef disabled fill:#e0e0e0,stroke:#cccccc,color:#888888;\n');
+  await clickNode(app, 'B', false);
+  assert.match(saved[6], /class B disabled;\n$/);
+  assert.equal((saved[6].match(/classDef disabled/g) ?? []).length, 1);
+});
+
+test('moves the managed section to the end without changing other statements', async () => {
+  const saved = [];
+  const app = fixture(async source => source, async source => saved.push(source));
+  app.diagram.ownerDocument.createElement = () => ({
+    set innerHTML(value) { this.source = value; },
+    querySelectorAll() { return [node('B', true)]; },
+  });
+  await app.viewer.load('flowchart TD\nA --> B\n%% Nodes disabled by clicking (managed automatically)\nclassDef disabled fill:red;\nclass A disabled;\n%% user note\nstyle B fill:blue;\n');
+  await clickNode(app, 'B', false);
+  assert.equal(saved[0], 'flowchart TD\nA --> B\n%% user note\nstyle B fill:blue;\n%% Nodes disabled by clicking (managed automatically)\nclassDef disabled fill:red;\nclass A,B disabled;\n');
+});
+
+test('refuses an ambiguous managed section without saving', async () => {
+  const saved = [];
+  const app = fixture(undefined, async source => saved.push(source));
+  await app.viewer.load('flowchart TD\nA --> B\n%% Nodes disabled by clicking (managed automatically)\nclass A disabled;\n%% Nodes disabled by clicking (managed automatically)\n');
+  await clickNode(app, 'A', false);
+  assert.equal(saved.length, 0);
+  assert.match(app.error.textContent, /Multiple automatically managed disabled sections/);
+});
+
+test('updates an existing managed list with CRLF line endings', async () => {
+  const saved = [];
+  const app = fixture(async source => source, async source => saved.push(source));
+  app.diagram.ownerDocument.createElement = () => ({
+    set innerHTML(value) { this.source = value; },
+    querySelectorAll() { return [node('A', false)]; },
+  });
+  await app.viewer.load('flowchart TD\r\nA --> B\r\n%% Nodes disabled by clicking (managed automatically)\r\nclassDef disabled fill:red;\r\nclass A,B disabled;\r\n');
+  await clickNode(app, 'A', true);
+  assert.equal(saved[0], 'flowchart TD\r\nA --> B\r\n%% Nodes disabled by clicking (managed automatically)\r\nclassDef disabled fill:red;\r\nclass B disabled;\r\n');
+});
+
+test('does not treat a marker inside a label as a managed section', async () => {
+  const saved = [];
+  const app = fixture(async source => source, async source => saved.push(source));
+  const source = 'flowchart TD\nA["label\n%% Nodes disabled by clicking (managed automatically)\nclass A disabled;\n"] --> B\n';
+  await app.viewer.load(source);
+  await clickNode(app, 'A', false);
+  assert.equal(saved[0], `${source}%% Nodes disabled by clicking (managed automatically)\nclassDef disabled fill:#e0e0e0,stroke:#cccccc,color:#888888;\nclass A disabled;\n`);
 });

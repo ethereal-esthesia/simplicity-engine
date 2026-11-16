@@ -6,13 +6,14 @@ function hasDiagram(source) {
 }
 
 const disabledStyle = 'classDef disabled fill:#e0e0e0,stroke:#cccccc,color:#888888;';
+const disabledNote = '%% Nodes disabled by clicking (managed automatically)';
 
 function flowchartNodeId(node) {
   return node?.getAttribute('id')?.match(/(?:^|-)flowchart-(.+)-\d+$/)?.[1];
 }
 
 // Hide labels and comments while retaining offsets for edits to Mermaid syntax.
-function syntaxMask(source) {
+function syntaxMask(source, commentStarts = []) {
   let mask = '';
   let depth = 0;
   let quote = false;
@@ -24,7 +25,10 @@ function syntaxMask(source) {
       mask += char;
       continue;
     }
-    if (!depth && !quote && char === '%' && source[i + 1] === '%') comment = true;
+    if (!comment && !depth && !quote && char === '%' && source[i + 1] === '%') {
+      commentStarts.push(i);
+      comment = true;
+    }
     if (comment) {
       mask += ' ';
       continue;
@@ -42,8 +46,38 @@ function syntaxMask(source) {
 }
 
 function toggleDisabled(source, id, disabled) {
+  const newline = source.includes('\r\n') ? '\r\n' : '\n';
+  const sectionPattern = /^%% Nodes disabled by clicking \(managed automatically\)\r?$(?:\n|$)/gm;
+  const commentStarts = [];
+  syntaxMask(source, commentStarts);
+  const sections = [...source.matchAll(sectionPattern)].filter(section => commentStarts.includes(section.index));
+  if (sections.length > 1) {
+    throw new Error('Multiple automatically managed disabled sections found; edit the Mermaid source instead.');
+  }
+  let ids = [];
+  let style = '';
+  if (sections.length) {
+    const section = sections[0];
+    let end = section.index + section[0].length;
+    const styleLine = source.slice(end).match(/^classDef[ \t]+disabled[ \t]+[^\r\n]*(?:\r?\n|$)/);
+    if (styleLine) {
+      style = styleLine[0].replace(/\r?\n$/, '');
+      end += styleLine[0].length;
+    }
+    const classLine = source.slice(end).match(/^class[ \t]+([^\s;,]+(?:,[^\s;,]+)*)[ \t]+disabled;[ \t]*(?:\r?\n|$)/);
+    if (classLine) {
+      ids = classLine[1].split(',');
+      end += classLine[0].length;
+    } else if (/^class[ \t]/.test(source.slice(end))) {
+      throw new Error('Invalid automatically managed disabled list; edit the Mermaid source instead.');
+    }
+    source = source.slice(0, section.index) + source.slice(end);
+  }
+
   const mask = syntaxMask(source);
   const edits = [];
+  const managed = ids.includes(id);
+  ids = ids.filter(value => value !== id);
   if (disabled) {
     const assignments = /(?:^|[;\n])[ \t]*class[ \t]+([^\s;]+)[ \t]+([^\s;]+)/g;
     for (const match of mask.matchAll(assignments)) {
@@ -59,7 +93,7 @@ function toggleDisabled(source, id, disabled) {
       const start = match.index + match[0].lastIndexOf('class');
       let end = match.index + match[0].length;
       if (!statements.length && source[end] === ';') end++;
-      edits.push({ start, end, text: statements.join(`;\n${indent}`) });
+      edits.push({ start, end, text: statements.join(`;${newline}${indent}`) });
     }
     const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const inline = new RegExp(`(^|[^\\p{L}\\p{N}_-])${escaped}[ \\t]*:::disabled\\b`, 'gu');
@@ -67,19 +101,21 @@ function toggleDisabled(source, id, disabled) {
       const start = match.index + match[0].lastIndexOf(':::disabled');
       edits.push({ start, end: start + ':::disabled'.length, text: '' });
     }
-    if (!edits.length) {
+    if (!edits.length && !managed) {
       throw new Error(`Cannot safely remove the disabled class from ${id}; edit the Mermaid source instead.`);
     }
     for (const edit of edits.sort((a, b) => b.start - a.start)) {
       source = source.slice(0, edit.start) + edit.text + source.slice(edit.end);
     }
-    return source;
+  } else {
+    ids.push(id);
   }
 
-  const newline = source.includes('\r\n') ? '\r\n' : '\n';
-  const needsStyle = !/(?:^|[;\n])[ \t]*classDef[ \t]+disabled(?:[ \t,]|$)/.test(mask);
+  const needsStyle = !style && !/(?:^|[;\n])[ \t]*classDef[ \t]+disabled(?:[ \t,]|$)/.test(syntaxMask(source));
   const separator = source.endsWith('\n') ? '' : newline;
-  return source + separator + (needsStyle ? disabledStyle + newline : '') + `class ${id} disabled;` + newline;
+  return source + separator + disabledNote + newline
+    + (style || needsStyle ? (style || disabledStyle) + newline : '')
+    + (ids.length ? `class ${ids.join(',')} disabled;` + newline : '');
 }
 
 export function createDiagramViewer({ root, diagram, editor, error, render, save }) {

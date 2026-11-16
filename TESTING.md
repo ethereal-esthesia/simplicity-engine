@@ -21,6 +21,9 @@ staying at the nearest display corner until the resize finishes; then the full
 diagram fades in over white. Click a flowchart node twice to disable and
 re-enable it, verifying each change is saved in the Mermaid file. Check an
 existing `disabled` class definition and a shared `class A,B disabled` assignment.
+Verify multiple clicked nodes share one comma-separated `class` statement in
+the commented section at the end of the file, and that removing the last node
+leaves no empty `class` statement.
 Click the diagram background to edit its Mermaid source.
 Verify that dragging or double-clicking diagram labels does not select them,
 that the icon cannot be dragged as an image, and that source text remains
