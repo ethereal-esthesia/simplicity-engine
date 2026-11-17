@@ -53,13 +53,26 @@ contains Record Screen, Settings, and Close. In Settings, verify the default
 folder and frame rate unchanged. Choose a writable recording folder and record
 the current display with system audio at each rate. Check that the actual frame
 rate does not exceed the selected maximum and the keyframe interval is no more
-than half that rate. Right-click to
-stop, verify that the menu appears only after saving, and inspect the resulting
+than half that rate. Right-click to stop, verify that a spinner appears while
+saving and disappears before the menu opens, and inspect the resulting
 timestamped MP4 for 1080p H.264 video and stereo AAC audio. Verify permission
 denial, an unwritable folder, and encoder failures are reported. Check that
 left-click still expands the diagram during recording. Dismissing the menu
 leaves the app open, and Close exits it. On other desktop platforms the menu
 contains Close only.
+Also launch `target/release/simplicity-app` from an interactive terminal and
+verify that stopping a recording saves the MP4 and reopens the menu without
+suspending the audio encoder.
+Run the macOS progress-indicator lifecycle test with:
+
+```sh
+clang -fobjc-arc -fblocks -mmacosx-version-min=15.0 \
+  -framework AppKit -framework AVFoundation -framework CoreGraphics \
+  -framework CoreMedia -framework ScreenCaptureKit \
+  tests/recording-progress.m -o target/recording-progress-test
+target/recording-progress-test
+```
+
 Verify that right-clicking the expanded editor retains its normal context menu.
 `make bundle` builds the macOS app; test its launch separately from development.
 The [installer workflow](docs/test-installers.md) compiles other desktop targets,

@@ -131,7 +131,7 @@ API_AVAILABLE(macos(15.0))
             dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
                 NSTask *task = [[NSTask alloc] init];
                 task.executableURL = [NSURL fileURLWithPath:self.encoderPath];
-                task.arguments = @[@"-v", @"error", @"-n", @"-i", self.temporaryURL.path,
+                task.arguments = @[@"-nostdin", @"-v", @"error", @"-n", @"-i", self.temporaryURL.path,
                     @"-map", @"0:v:0", @"-map", @"0:a:0", @"-c:v", @"copy",
                     @"-c:a", @"aac", @"-b:a", @"384k", @"-movflags", @"+faststart",
                     self.destinationURL.path];
@@ -197,11 +197,19 @@ API_AVAILABLE(macos(15.0))
 }
 @end
 
+@interface RecordingProgressIndicator : NSProgressIndicator
+@end
+
+@implementation RecordingProgressIndicator
+- (NSView *)hitTest:(NSPoint)point { return nil; }
+@end
+
 API_AVAILABLE(macos(15.0))
 @interface ScreenRecorder : NSObject <SCStreamDelegate>
 @property(nonatomic, strong) SCStream *stream;
 @property(nonatomic, strong) RecordingWriter *output;
 @property(nonatomic, strong) NSWindow *window;
+@property(nonatomic, strong) RecordingProgressIndicator *progress;
 @property(nonatomic, copy) NSString *encoderPath;
 @property(nonatomic, copy) void (^afterStop)(void);
 @property(nonatomic) BOOL starting;
@@ -264,6 +272,9 @@ API_AVAILABLE(macos(15.0))
 }
 
 - (void)reset {
+    [self.progress stopAnimation:nil];
+    [self.progress removeFromSuperview];
+    self.progress = nil;
     self.stream = nil;
     self.output = nil;
     self.starting = NO;
@@ -420,6 +431,18 @@ API_AVAILABLE(macos(15.0))
     if (self.afterStop) return;
     self.afterStop = action;
     self.stopRequested = YES;
+    NSView *view = self.window.contentView;
+    NSRect bounds = view.bounds;
+    self.progress = [[RecordingProgressIndicator alloc] initWithFrame:
+        NSMakeRect(NSMidX(bounds) - 16, NSMidY(bounds) - 16, 32, 32)];
+    self.progress.style = NSProgressIndicatorStyleSpinning;
+    self.progress.indeterminate = YES;
+    self.progress.autoresizingMask = NSViewMinXMargin | NSViewMaxXMargin |
+        NSViewMinYMargin | NSViewMaxYMargin;
+    self.progress.toolTip = @"Saving screen recording";
+    [self.progress setAccessibilityLabel:@"Saving screen recording"];
+    [view addSubview:self.progress positioned:NSWindowAbove relativeTo:nil];
+    [self.progress startAnimation:nil];
     if (self.starting || self.stopping) return;
     [self stopCapture];
 }

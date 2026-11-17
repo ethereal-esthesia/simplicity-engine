@@ -33,7 +33,8 @@ and Tauri**.
   to select a recording folder and a maximum frame rate (24, 30, or 60 fps),
   then **Record Screen** to capture the display
   containing the window and system audio. Right-click again to stop and save
-  before the menu opens. Left-click still expands the diagram. **Close** exits.
+  before the menu opens; a spinner appears while saving, which can take several
+  minutes for long recordings. Left-click still expands the diagram. **Close** exits.
   Recording requests macOS screen-recording permission when needed.
 - The Rust core is built for native and Wasm targets. The Wasm artifact is tested
   independently; the native window uses the same Rust core for its geometry.
