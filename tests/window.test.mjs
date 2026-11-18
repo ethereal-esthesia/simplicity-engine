@@ -9,7 +9,7 @@ const source = (await readFile(new URL('../web/main.js', import.meta.url), 'utf8
   .replace("import { createDiagramViewer } from './diagram-viewer.mjs';", '')
   .replace("import { renderMermaid } from './generated/mermaid-renderer.mjs';", '');
 
-async function windowApp(invoke) {
+async function windowApp(invoke, { diagram } = {}) {
   const listeners = {};
   const attributes = {};
   const eventTarget = { addEventListener(name, callback) { listeners[`window:${name}`] = callback; } };
@@ -27,8 +27,9 @@ async function windowApp(invoke) {
   };
   const elements = {
     '#status': status, '#floating-expand': button, '#expanded-artwork': artwork,
-    '#window-surface': surface,
+    '#window-surface': surface, '#diagram': diagram,
   };
+  let animationFrames = 0;
   const context = {
     document: {
       querySelector: selector => elements[selector],
@@ -45,7 +46,15 @@ async function windowApp(invoke) {
     renderMermaid() {},
     matchMedia: () => ({ matches: false }),
     addEventListener(name, callback) { listeners[name] = callback; },
-    requestAnimationFrame: callback => queueMicrotask(callback),
+    requestAnimationFrame: callback => {
+      if (animationFrames++ < 2) queueMicrotask(callback);
+      return animationFrames;
+    },
+    cancelAnimationFrame() {},
+    innerWidth: 1000,
+    innerHeight: 800,
+    Image: class { decode() { return new Promise(() => {}); } },
+    XMLSerializer: class { serializeToString() { return '<svg/>'; } },
     performance: { now: () => 1000 },
     console: { error() {} },
   };
@@ -53,6 +62,41 @@ async function windowApp(invoke) {
   await new Promise(resolve => setImmediate(resolve));
   return { button, status, attributes, listeners };
 }
+
+test('shrink restores the SVG inline styles after success or failure', async () => {
+  for (const originalStyle of ['max-width: 168px; color: red;', null]) {
+    for (const failure of [false, true]) {
+      let styleAttribute = originalStyle;
+      const style = {
+        get cssText() { return styleAttribute ?? ''; },
+        set cssText(value) { styleAttribute = value; },
+      };
+      const svg = {
+        style,
+        getBoundingClientRect: () => ({ width: 168, height: 200 }),
+        getAttribute: () => styleAttribute,
+        setAttribute: (name, value) => { if (name === 'style') styleAttribute = value; },
+        removeAttribute: name => { if (name === 'style') styleAttribute = null; },
+        cloneNode: () => ({ setAttribute() {}, removeAttribute() {} }),
+      };
+      const commands = [];
+      const app = await windowApp(async command => {
+        commands.push(command);
+        if (command === 'is_desktop') return true;
+        if (command === 'load_diagram_source') return 'flowchart TD\n  A --> B';
+        if (command === 'prepare_window_expansion') return 'top-left';
+        if (command === 'shrink_window' && failure) throw new Error('shrink failed');
+      }, { diagram: { querySelector: () => svg } });
+      app.listeners.click({ detail: 0 });
+      await new Promise(resolve => setImmediate(resolve));
+      app.listeners.keydown({ key: 'Escape', preventDefault() {} });
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(commands.at(-1), 'shrink_window');
+      assert.equal(styleAttribute, originalStyle);
+      if (failure) assert.match(app.status.textContent, /shrink failed/);
+    }
+  }
+});
 
 test('prepares the selected corner before expanding and collapses on Escape', async () => {
   const commands = [];

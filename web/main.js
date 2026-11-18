@@ -100,6 +100,7 @@ function scaleDiagramWithWindow() {
   const startW = innerWidth;
   const startH = innerHeight;
   if (!width || !height || !startW || !startH) return () => {};
+  const originalStyle = svg.getAttribute('style');
   const layerStyle = `max-width:none;max-height:none;width:${width}px;height:${height}px;position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;`;
   svg.style.cssText += `;${layerStyle}`;
   let layer = svg;
@@ -175,9 +176,8 @@ function scaleDiagramWithWindow() {
     cancelled = true;
     cancelAnimationFrame(frame);
     for (const canvas of levels) canvas.remove();
-    for (const property of ['max-width', 'max-height', 'width', 'height', 'position', 'left', 'top', 'transform-origin', 'will-change', 'transform', 'visibility']) {
-      svg.style.removeProperty(property);
-    }
+    if (originalStyle === null) svg.removeAttribute('style');
+    else svg.setAttribute('style', originalStyle);
   };
 }
 
