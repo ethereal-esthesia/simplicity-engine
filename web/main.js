@@ -72,6 +72,7 @@ async function shrinkWindow() {
   if (!isExpanded || isShrinking) return;
 
   isShrinking = true;
+  const stopScaling = scaleDiagramWithWindow();
   try {
     await invoke('shrink_window', { reducedMotion: reducedMotion.matches });
     isExpanded = false;
@@ -82,8 +83,76 @@ async function shrinkWindow() {
   } catch (error) {
     showError(error);
   } finally {
+    stopScaling();
     isShrinking = false;
   }
+}
+
+const COMPACT_SIZE = 88;
+const SHRINK_MS = 1500;
+
+// Rasterize the SVG once into a bitmap, then scale that texture each frame to match the window's animated size.
+function scaleDiagramWithWindow() {
+  const container = document.querySelector('#diagram');
+  const svg = container?.querySelector?.('svg');
+  if (!svg || diagramViewer.isEditing()) return () => {};
+  const { width, height } = svg.getBoundingClientRect();
+  const startW = innerWidth;
+  const startH = innerHeight;
+  if (!width || !height || !startW || !startH) return () => {};
+  const layerStyle = `max-width:none;max-height:none;width:${width}px;height:${height}px;position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;`;
+  svg.style.cssText += `;${layerStyle}`;
+  let layer = svg;
+  let canvas = null;
+  let cancelled = false;
+
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('width', width);
+  clone.setAttribute('height', height);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.removeAttribute('style');
+  const image = new Image();
+  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(clone))}`;
+  image.decode().then(() => {
+    if (cancelled) return;
+    const ratio = devicePixelRatio || 1;
+    canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(width * ratio);
+    canvas.height = Math.ceil(height * ratio);
+    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+    canvas.style.cssText = layerStyle;
+    canvas.style.transform = svg.style.transform;
+    container.append(canvas);
+    svg.style.visibility = 'hidden';
+    layer = canvas;
+  }).catch(() => {});
+
+  const started = performance.now();
+  // The webview reports its size late, so derive the window size from the native animation's smoothstep timing instead.
+  const update = () => {
+    const t = reducedMotion.matches ? 1 : Math.min((performance.now() - started) / SHRINK_MS, 1);
+    const eased = t * t * (3 - 2 * t);
+    const w = startW + (COMPACT_SIZE - startW) * eased;
+    const h = startH + (COMPACT_SIZE - startH) * eased;
+    const scale = Math.max(0, Math.min(w / startW, h / startH, 1));
+    const x = (w - width * scale) / 2;
+    const y = (h - height * scale) / 2;
+    layer.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+  };
+  let frame = 0;
+  const tick = () => {
+    update();
+    frame = requestAnimationFrame(tick);
+  };
+  tick();
+  return () => {
+    cancelled = true;
+    cancelAnimationFrame(frame);
+    canvas?.remove();
+    for (const property of ['max-width', 'max-height', 'width', 'height', 'position', 'left', 'top', 'transform-origin', 'will-change', 'transform', 'visibility']) {
+      svg.style.removeProperty(property);
+    }
+  };
 }
 
 function requestShrink() {
