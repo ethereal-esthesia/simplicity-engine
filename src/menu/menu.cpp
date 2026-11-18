@@ -1,55 +1,98 @@
 #include <simplicity/menu.hpp>
+#include <simplicity/core_ffi.h>
 #include <functional>
-#include <set>
 #include <stdexcept>
+#include <utility>
 
 namespace simplicity {
 namespace {
-MenuItem* locate(std::vector<MenuItem>& items, const std::string& id) {
-    for (auto& item : items) {
-        if (item.kind != MenuKind::separator && item.id == id) return &item;
-        if (auto* found = locate(item.children, id)) return found;
-    }
-    return nullptr;
+struct FlatItem {
+    std::string id;
+    std::string label;
+    std::string group;
+    MenuKind kind;
+    bool enabled;
+    bool checked;
+    int32_t parent;
+};
+
+std::size_t countItems(const std::vector<MenuItem>& items) {
+    std::size_t count = items.size();
+    for (const auto& item : items) count += countItems(item.children);
+    return count;
 }
-bool apply(std::vector<MenuItem>& items, const std::string& id, bool parentEnabled) {
+
+bool updateItem(std::vector<MenuItem>& items, const std::string& id,
+                const std::function<void(MenuItem&)>& update) {
     for (auto& item : items) {
-        const bool enabled = parentEnabled && item.enabled;
-        if (item.id == id && item.kind != MenuKind::separator) {
-            if (!enabled || item.kind == MenuKind::submenu) return false;
-            if (item.kind == MenuKind::toggle) item.checked = !item.checked;
-            if (item.kind == MenuKind::radio) {
-                for (auto& sibling : items)
-                    if (sibling.kind == MenuKind::radio && sibling.group == item.group)
-                        sibling.checked = false;
-                item.checked = true;
-            }
+        if (item.id == id) {
+            update(item);
             return true;
         }
-        if (apply(item.children, id, enabled)) return true;
+        if (updateItem(item.children, id, update)) return true;
     }
     return false;
 }
+
+void flattenItems(const std::vector<MenuItem>& items, int32_t parent,
+                  std::vector<FlatItem>& output) {
+    for (const auto& item : items) {
+        const auto index = static_cast<int32_t>(output.size());
+        output.push_back({item.id, item.label, item.group, item.kind,
+                          item.enabled, item.checked, parent});
+        flattenItems(item.children, index, output);
+    }
 }
+}
+
 Menu::Menu(std::vector<MenuItem> items) : items_(std::move(items)) {
-    std::set<std::string> ids;
-    std::function<void(const std::vector<MenuItem>&)> validate = [&](const auto& entries) {
-        std::set<std::string> selectedGroups;
-        for (const auto& item : entries) {
-            if (item.kind != MenuKind::separator &&
-                (item.id.empty() || !ids.insert(item.id).second))
-                throw std::invalid_argument("Menu IDs must be nonempty and unique");
-            if (item.kind != MenuKind::submenu && !item.children.empty())
-                throw std::invalid_argument("Only submenus may have children");
-            if (item.kind == MenuKind::radio && (item.group.empty() ||
-                (item.checked && !selectedGroups.insert(item.group).second)))
-                throw std::invalid_argument("Invalid radio group");
-            validate(item.children);
-        }
-    };
-    validate(items_);
+    std::vector<FlatItem> flat;
+    flat.reserve(countItems(items_));
+    flattenItems(items_, -1, flat);
+
+    std::vector<SimplicityRawMenuItem> raw;
+    raw.reserve(flat.size());
+    for (const auto& item : flat) {
+        raw.push_back({item.id.data(), item.id.size(), item.label.data(),
+                       item.label.size(),
+                       static_cast<uint32_t>(item.kind),
+                       static_cast<uint8_t>(item.enabled),
+                       static_cast<uint8_t>(item.checked), item.group.data(),
+                       item.group.size(), item.parent});
+    }
+
+    int32_t error = 0;
+    core_ = simplicity_menu_create(raw.data(), raw.size(), &error);
+    if (!core_) {
+        throw std::invalid_argument("Invalid menu definition (core error " +
+                                    std::to_string(error) + ")");
+    }
 }
+
+Menu::~Menu() {
+    simplicity_menu_destroy(core_);
+}
+
+Menu::Menu(Menu&& other) noexcept
+    : core_(std::exchange(other.core_, nullptr)),
+      items_(std::move(other.items_)) {}
+
+Menu& Menu::operator=(Menu&& other) noexcept {
+    if (this != &other) {
+        simplicity_menu_destroy(core_);
+        core_ = std::exchange(other.core_, nullptr);
+        items_ = std::move(other.items_);
+    }
+    return *this;
+}
+
+const std::vector<MenuItem>& Menu::items() const {
+    syncState();
+    return items_;
+}
+
 const MenuItem* Menu::find(const std::string& id) const {
+    syncState();
     std::function<const MenuItem*(const std::vector<MenuItem>&)> search = [&](const auto& entries) -> const MenuItem* {
         for (const auto& item : entries) {
             if (item.kind != MenuKind::separator && item.id == id) return &item;
@@ -59,13 +102,45 @@ const MenuItem* Menu::find(const std::string& id) const {
     };
     return search(items_);
 }
+
 bool Menu::setEnabled(const std::string& id, bool enabled) {
-    if (auto* item = locate(items_, id)) { item->enabled = enabled; return true; }
-    return false;
+    if (!simplicity_menu_set_enabled(core_, id.data(), id.size(), enabled)) {
+        return false;
+    }
+    return updateItem(items_, id, [enabled](MenuItem& item) {
+        item.enabled = enabled;
+    });
 }
+
 bool Menu::setLabel(const std::string& id, std::string label) {
-    if (auto* item = locate(items_, id)) { item->label = std::move(label); return true; }
-    return false;
+    if (!simplicity_menu_set_label(core_, id.data(), id.size(), label.data(),
+                                   label.size())) {
+        return false;
+    }
+    return updateItem(items_, id, [&label](MenuItem& item) {
+        item.label = std::move(label);
+    });
 }
-bool Menu::activate(const std::string& id) { return apply(items_, id, true); }
+
+bool Menu::activate(const std::string& id) {
+    if (!simplicity_menu_activate(core_, id.data(), id.size())) return false;
+    syncState();
+    return true;
+}
+
+void Menu::syncState() const {
+    std::function<void(std::vector<MenuItem>&)> sync = [&](auto& entries) {
+        for (auto& item : entries) {
+            bool enabled = item.enabled;
+            bool checked = item.checked;
+            if (simplicity_menu_get_state(core_, item.id.data(), item.id.size(),
+                                          &enabled, &checked)) {
+                item.enabled = enabled;
+                item.checked = checked;
+            }
+            sync(item.children);
+        }
+    };
+    sync(items_);
+}
 }

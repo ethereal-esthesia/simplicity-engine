@@ -4,14 +4,19 @@
   "private": true,
   "scripts": {
     "build:wasm": "node scripts/build-wasm.mjs",
+    "build:diagram": "esbuild web/mermaid-renderer.mjs --bundle --platform=browser --format=esm --minify --outfile=web/generated/mermaid-renderer.mjs",
     "build": "tauri build --no-bundle -- --locked",
-    "dev": "tauri dev",
+    "dev": "node scripts/dev.mjs",
     "bundle": "tauri build --bundles app -- --locked",
-    "test": "npm run build:wasm && cargo test --locked -p simplicity-core && node --test tests/wasm.test.mjs tests/video-player/video-player.test.mjs",
+    "test": "npm run build:wasm && npm run build:diagram && cargo test --locked -p simplicity-core && node --test tests/wasm.test.mjs tests/window.test.mjs tests/diagram.test.mjs tests/diagram-prepare.test.mjs tests/video-player/video-player.test.mjs",
     "video-player:build": "cd tests/video-player && tauri build --no-bundle -- --locked",
     "tauri": "tauri"
   },
+  "dependencies": {
+    "mermaid": "12.3.0"
+  },
   "devDependencies": {
-    "@tauri-apps/cli": "2.11.4"
+    "@tauri-apps/cli": "2.11.4",
+    "esbuild": "0.28.2"
   }
 }

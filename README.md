@@ -9,10 +9,35 @@ and Tauri**.
   compile it to **WebAssembly (Wasm)**. Keep one implementation across hosts.
 - Use **Tauri 2** for application windows and native services. Its native Rust
   host and the Rust code compiled to Wasm are separate build targets.
-- Keep JavaScript thin: load Wasm, forward input, and connect drawing to web APIs.
-  Keep OS integration in Tauri instead of putting it in the portable core.
-- Hello Pixel now has a small Tauri host and dependency-free Rust/Wasm core.
-  Rust provides its centered mark geometry and palette; a Canvas adapter draws it.
+- Keep JavaScript thin: use Tauri commands for OS integration and keep portable
+  geometry in the shared Rust core.
+- The Tauri host opens as a small transparent, frameless, draggable window. Its
+  supplied SVG button stays above other windows and expands the native window
+  to a uniform inset equal to 5% of the current monitor's shorter dimension with
+  a white background, then reveals a Mermaid diagram. On macOS, the icon stays
+  anchored to the nearest display corner during expansion. Click a flowchart
+  node to toggle its disabled styling and save the change to the source file.
+  Click-managed nodes are listed together in a commented section at the end of
+  the file; an existing `disabled` class definition is reused.
+  Click the diagram background to edit the source; Escape saves valid source and
+  returns to the diagram. Clicking outside the window or pressing Escape from
+  the diagram collapses the window.
+  The `WindowOptions` constructor in `src-tauri/src/lib.rs` controls
+  `always_on_top` (enabled by default). On macOS, when enabled, the app uses
+  accessory mode (no Dock icon) and joins fullscreen Spaces at screen-saver level.
+  It can appear above menus. Interaction with fullscreen games may interrupt
+  the game.
+  On macOS, the first click or drag on the inactive window is handled without
+  requiring a separate click to focus it.
+  On macOS 15 or later, right-click the compact window and choose **Settings**
+  to select a recording folder and a maximum frame rate (24, 30, or 60 fps),
+  then **Record Screen** to capture the display
+  containing the window and system audio. Right-click again to stop and save
+  before the menu opens; a spinner appears while saving, which can take several
+  minutes for long recordings. Left-click still expands the diagram. **Close** exits.
+  Recording requests macOS screen-recording permission when needed.
+- The Rust core is built for native and Wasm targets. The Wasm artifact is tested
+  independently; the native window uses the same Rust core for its geometry.
 - The existing C++/SDL macOS and iPhone demos, menu API, bookmark probe, and Swift
   Matte Overlay remain available while features migrate. They are not yet ported.
 
@@ -40,15 +65,45 @@ Node.js 22 or later. See [developer setup](docs/developer-setup.md).
 make setup       # install locked npm dependencies and the Rust Wasm target
 make             # build Wasm and the release Tauri executable
 make test        # native Rust tests and execution of the compiled Wasm
-make run         # launch Tauri in development mode
+make run DIAGRAM=/path/to/diagram.mmd  # launch with a Mermaid source file
 make bundle      # build the macOS .app
 ```
 
 The release executable is `target/release/simplicity-app`; the macOS app is
-`target/release/bundle/macos/Simplicity Engine.app`. The demo opens a dark window
-with a centered mint mark. Generated Wasm lives in `web/generated/` and is rebuilt
-automatically before Tauri runs or builds. Node is build/test tooling, not an app
-runtime dependency. Equivalent npm commands are available in `package.json`.
+`target/release/bundle/macos/Simplicity Engine.app`. The compact window is placed
+at the monitor's top-right corner. Drag it to reposition; click the SVG to
+resize the actual native window and reveal the diagram after expansion. A source
+path is required; if the file is missing, the terminal asks before creating it.
+Empty files open an editor with commented usage hints. Invalid diagrams and
+file errors leave the editor open without overwriting the source; external file
+changes must be resolved by restarting before saving.
+`make test` builds and executes the Rust core's Wasm target. Node is build/test
+tooling, not an app runtime dependency. Equivalent npm commands are available in
+`package.json`.
+
+To launch without Make, use
+`npm run dev -- /path/to/diagram.mmd` or
+`target/release/simplicity-app /path/to/diagram.mmd`. The renderer is bundled
+locally at build time and does not require network access at runtime.
+On macOS, the first build also downloads verified FFmpeg source and builds a
+minimal local encoder. Packaged apps include the encoder, its license, source,
+and build script; Homebrew or FFmpeg is not needed at runtime.
+
+Recordings target 1920×1080 at up to the selected frame rate (60 fps by default),
+H.264 video at 12 Mbps and stereo AAC at 384 kbps in MP4. The maximum keyframe
+interval is half the selected frame rate. Actual frame and bit rates vary with
+the source. Audio is first stored losslessly in a temporary file in the chosen
+folder, then encoded after capture stops; long recordings require extra disk
+space and processing time.
+If encoding fails, the temporary recording is retained for recovery. YouTube
+re-encodes uploads, so upload processing is not lossless.
+
+The reusable `setupWindowInteractions` initializer in
+[`web/window-interactions.mjs`](web/window-interactions.mjs) uses the normal
+cursor by default. Pass `showDragCursor: true` and include the
+`show-drag-cursor` rules from [`web/style.css`](web/style.css) to show grab and
+grabbing cursors. Pointer releases less than five screen pixels from the press
+activate the control; dragging does not.
 
 The standalone looping video player is kept in `tests/video-player/`, separate
 from Hello Pixel. Build it with `npm run video-player:build`, then run:

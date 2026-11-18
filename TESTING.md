@@ -2,12 +2,90 @@
 
 ## Rust/Wasm/Tauri
 
-Run `make test` for native Rust tests and actual Wasm execution under Node.
-It also runs the video player adapter tests. Run `cargo test --locked -p
-video-player` for its command-line path validation.
-Run `make` to compile the native Tauri host with the generated Wasm embedded.
-Run `make run` for a webview check: a dark background with a centered 8-pixel mint
-mark, still centered after resizing. Engine load errors must be visible.
+Run `make test` for native Rust tests, actual Wasm execution under Node, and the
+video player adapter tests. Run `cargo test --locked -p video-player` for its
+command-line path validation. On macOS, run
+`sh scripts/build-recording-encoder.sh` before `cargo test --locked -p
+simplicity-app` to prepare bundled resources and exercise the AppKit
+frame-coordinate mapping.
+Run `make` to compile the native Tauri host. Run
+`make run DIAGRAM=/path/to/diagram.mmd` to verify the app
+opens as a small transparent, borderless, rounded, always-on-top window at the
+monitor's top-right corner. Drag it to verify native window dragging without
+expansion, including a long drag; a click released less than five pixels from
+the press should expand it. On macOS, focus another application first and
+verify that a single click expands the window; repeat with a single click-drag
+to verify it moves without an initial focus click. Confirm the normal cursor is
+used by default and the optional drag-cursor setting shows grab/grabbing cursors. Click
+the SVG and confirm the window itself resizes smoothly at a 60 Hz target to a
+uniform inset equal to 5% of the smaller monitor dimension, with the small icon
+staying at the nearest display corner until the resize finishes; then the full
+diagram fades in over white. Click a flowchart node twice to disable and
+re-enable it, verifying each change is saved in the Mermaid file. Check an
+existing `disabled` class definition and a shared `class A,B disabled` assignment.
+Verify multiple clicked nodes share one comma-separated `class` statement in
+the commented section at the end of the file, and that removing the last node
+leaves no empty `class` statement.
+Click the diagram background to edit its Mermaid source.
+Verify that dragging or double-clicking diagram labels does not select them,
+that the icon cannot be dragged as an image, and that source text remains
+selectable in the editor.
+Verify long lines wrap and a vertical scrollbar appears when needed; Escape
+must save valid edits and fade back to the updated diagram. Invalid source
+must keep the editor open with an error and leave the file unchanged. Test a
+missing path with both answers to the terminal creation prompt, and an empty
+file for commented usage hints. Test all four corners after dragging the compact
+window. On macOS, watch the top-left rounded corner during both
+directions for vibration or a rectangular frame, and verify that the diagram
+does not fade in before the native animation finishes. Click outside the window
+and press Escape to verify both shrink it back to its original dragged position
+with all four corners rounded throughout. Tauri command failures must be visible.
+On macOS, the native white backing matches the web surface and keeps the
+rounded corner stationary when the webview redraw lags. During shrink, verify
+that the diagram stays centered, never briefly moves backwards, and remains
+smoothly filtered as it gets smaller. Reopen and edit it after shrinking.
+To investigate shrink jitter, run
+`SIMPLICITY_SHRINK_DEBUG=1 make run DIAGRAM=/path/to/diagram.mmd` and reproduce
+the shrink. After the animation, the terminal prints `[shrink-debug]` native
+move/resize events in physical pixels and buffered web animation samples in
+CSS pixels. Both use Unix-epoch milliseconds. Bitmap coordinates and scale
+are the values requested by the web animation, not measured screen positions;
+on macOS, the web bitmap remains at scale 1 while AppKit scales a native copy.
+Native events may not be emitted for every displayed frame. The trace
+contains window geometry, not diagram contents. Omit the variable to disable
+tracing.
+On macOS, switch between desktop Spaces and a fullscreen application such as
+Minecraft and verify the compact window remains visible and can be expanded,
+edited, and collapsed without changing the application's display mode.
+Set the `WindowOptions` constructor's `always_on_top` to false and rebuild to
+verify that other windows can cover it; restore it to true to verify it floats.
+On macOS 15 or later, right-click the compact window and verify that the menu
+contains Record Screen, Settings, and Close. In Settings, verify the default
+60 fps and that 24, 30, and 60 fps persist after saving; Cancel must leave the
+folder and frame rate unchanged. Choose a writable recording folder and record
+the current display with system audio at each rate. Check that the actual frame
+rate does not exceed the selected maximum and the keyframe interval is no more
+than half that rate. Right-click to stop, verify that a spinner appears while
+saving and disappears before the menu opens, and inspect the resulting
+timestamped MP4 for 1080p H.264 video and stereo AAC audio. Verify permission
+denial, an unwritable folder, and encoder failures are reported. Check that
+left-click still expands the diagram during recording. Dismissing the menu
+leaves the app open, and Close exits it. On other desktop platforms the menu
+contains Close only.
+Also launch `target/release/simplicity-app` from an interactive terminal and
+verify that stopping a recording saves the MP4 and reopens the menu without
+suspending the audio encoder.
+Run the macOS progress-indicator lifecycle test with:
+
+```sh
+clang -fobjc-arc -fblocks -mmacosx-version-min=15.0 \
+  -framework AppKit -framework AVFoundation -framework CoreGraphics \
+  -framework CoreMedia -framework ScreenCaptureKit \
+  tests/recording-progress.m -o target/recording-progress-test
+target/recording-progress-test
+```
+
+Verify that right-clicking the expanded editor retains its normal context menu.
 `make bundle` builds the macOS app; test its launch separately from development.
 The [installer workflow](docs/test-installers.md) compiles other desktop targets,
 Android APKs, and iOS Simulator apps. Runtime and installation checks on those
@@ -17,6 +95,20 @@ Run `npm run video-player:build`, then
 `target/release/video-player /path/to/video.mp4` to check that the standalone
 video plays and loops in its bordered window, including after resizing. Missing
 or unplayable files must show an error.
+
+## Shared engine test boundary
+
+`crates/engine-core` is the source of truth for portable engine behavior. Keep
+its unit tests in Rust, and use the compiled Wasm tests to verify that the same
+implementation works through the Wasm boundary. JavaScript tests should cover
+the Wasm/Canvas and Tauri webview adapters, not reimplement engine behavior.
+Rust tests in Tauri host crates cover host-specific integration.
+
+The retained C++/SDL tests cover menu presentation and native driver
+integration. Portable menu validation, mutation, and activation behavior lives
+in `simplicity-core` and is shared with the native menu drivers through its C
+ABI. Rust unit tests own those rules; CTest remains focused on SDL/AppKit
+integration.
 
 ## Retained Apple demos
 
@@ -32,9 +124,10 @@ ctest --test-dir build/release --output-on-failure
 python3 tests/test_ios_setup.py
 ```
 
-CTest covers shared menu behavior, a headless Menu Studio run, SDL initialization,
-and RNG smoke/vector checks. `./scripts/menu_demo.sh test host` also verifies
-native AppKit menu construction, state, and dispatch.
+CTest covers touch-menu interaction, a headless Menu Studio run, and SDL
+initialization. Portable RNG and menu behavior are tested in `simplicity-core`.
+`./scripts/menu_demo.sh test host` also verifies native AppKit menu construction,
+state, and dispatch.
 
 For iPhone simulator builds and runtime self-tests:
 

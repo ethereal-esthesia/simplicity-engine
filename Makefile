@@ -9,7 +9,8 @@ build:
 	npm run build
 
 run:
-	npm run dev
+	@test -n "$${DIAGRAM:-}" || { echo "Usage: make run DIAGRAM=/path/to/diagram.mmd" >&2; exit 2; }
+	npm run dev -- "$${DIAGRAM}"
 
 test:
 	npm test

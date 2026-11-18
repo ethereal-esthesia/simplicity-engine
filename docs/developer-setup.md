@@ -13,9 +13,9 @@ SDL simulator app.
 
 ## Retained Apple demos
 
-Use macOS with Apple command-line developer tools, CMake 3.25+ for the presets,
-Ninja, and Python 3. Install CMake and Ninja with `brew install cmake ninja` or
-`sudo port install cmake ninja`.
+Use macOS with Apple command-line developer tools, Rust, CMake 3.25+ for the
+presets, Ninja, and Python 3. Install CMake and Ninja with
+`brew install cmake ninja` or `sudo port install cmake ninja`.
 
 ```sh
 ./scripts/dev-setup.sh --target macos --check
@@ -31,6 +31,7 @@ Unsupported targets/options exit with code 2; missing tools exit with code 1.
 For iOS, install full Xcode and select it with
 `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`.
 Install an iOS runtime in Xcode or use `xcodebuild -downloadPlatform iOS`.
+Install the Rust simulator target with `rustup target add aarch64-apple-ios-sim`.
 The checked-in simulator presets use arm64 and an iOS 17.0 deployment target.
 
 Build and testing are separate from setup:

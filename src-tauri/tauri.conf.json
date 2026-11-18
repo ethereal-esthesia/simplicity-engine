@@ -4,20 +4,29 @@
   "version": "0.1.0",
   "identifier": "dev.simplicityengine.desktop",
   "build": {
-    "beforeDevCommand": "npm run build:wasm",
-    "beforeBuildCommand": "npm run build:wasm",
+    "beforeDevCommand": "npm run build:diagram",
+    "beforeBuildCommand": "npm run build:diagram",
     "frontendDist": "../web"
   },
   "app": {
+    "macOSPrivateApi": true,
+    "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Simplicity Engine - Hello Pixel",
-        "width": 800,
-        "height": 600
+        "title": "Simplicity Engine",
+        "width": 88,
+        "height": 88,
+        "resizable": false,
+        "alwaysOnTop": false,
+        "acceptFirstMouse": true,
+        "decorations": false,
+        "transparent": true,
+        "shadow": true,
+        "center": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
     }
   },
   "bundle": {

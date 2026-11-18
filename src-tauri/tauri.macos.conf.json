@@ -1,0 +1,14 @@
+{
+  "build": {
+    "beforeDevCommand": "npm run build:diagram && sh scripts/build-recording-encoder.sh",
+    "beforeBuildCommand": "npm run build:diagram && sh scripts/build-recording-encoder.sh"
+  },
+  "bundle": {
+    "resources": {
+      "../node_modules/.cache/simplicity-recording/ffmpeg": "ffmpeg",
+      "../node_modules/.cache/simplicity-recording/ffmpeg-LICENSE": "ffmpeg-LICENSE",
+      "../node_modules/.cache/simplicity-recording/ffmpeg-7.1.1.tar.xz": "ffmpeg-7.1.1.tar.xz",
+      "../scripts/build-recording-encoder.sh": "ffmpeg-build.sh"
+    }
+  }
+}
