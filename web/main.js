@@ -103,7 +103,8 @@ function scaleDiagramWithWindow() {
   const layerStyle = `max-width:none;max-height:none;width:${width}px;height:${height}px;position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;`;
   svg.style.cssText += `;${layerStyle}`;
   let layer = svg;
-  let canvas = null;
+  let levels = [];
+  let level = -1;
   let cancelled = false;
 
   const clone = svg.cloneNode(true);
@@ -116,15 +117,31 @@ function scaleDiagramWithWindow() {
   image.decode().then(() => {
     if (cancelled) return;
     const ratio = devicePixelRatio || 1;
-    canvas = document.createElement('canvas');
-    canvas.width = Math.ceil(width * ratio);
-    canvas.height = Math.ceil(height * ratio);
-    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-    canvas.style.cssText = layerStyle;
-    canvas.style.transform = svg.style.transform;
-    container.append(canvas);
+    // Build a mip chain by repeated high-quality halving so heavy downscales stay smooth.
+    let source = image;
+    let pixelsW = Math.ceil(width * ratio);
+    let pixelsH = Math.ceil(height * ratio);
+    while (true) {
+      const canvas = document.createElement('canvas');
+      canvas.width = pixelsW;
+      canvas.height = pixelsH;
+      const context = canvas.getContext('2d');
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+      context.drawImage(source, 0, 0, pixelsW, pixelsH);
+      canvas.style.cssText = `${layerStyle}visibility:hidden;`;
+      container.append(canvas);
+      levels.push(canvas);
+      source = canvas;
+      pixelsW = Math.floor(pixelsW / 2);
+      pixelsH = Math.floor(pixelsH / 2);
+      if (pixelsW < 16 || pixelsH < 16) break;
+    }
     svg.style.visibility = 'hidden';
-    layer = canvas;
+    layer = levels[0];
+    level = 0;
+    levels[0].style.visibility = 'visible';
+    levels[0].style.transform = svg.style.transform;
   }).catch(() => {});
 
   const started = performance.now();
@@ -137,6 +154,15 @@ function scaleDiagramWithWindow() {
     const scale = Math.max(0, Math.min(w / startW, h / startH, 1));
     const x = (w - width * scale) / 2;
     const y = (h - height * scale) / 2;
+    if (levels.length) {
+      const wanted = Math.min(levels.length - 1, Math.max(0, Math.floor(Math.log2(1 / Math.max(scale, 1e-6)))));
+      if (wanted !== level) {
+        levels[level].style.visibility = 'hidden';
+        levels[wanted].style.visibility = 'visible';
+        level = wanted;
+        layer = levels[wanted];
+      }
+    }
     layer.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
   };
   let frame = 0;
@@ -148,7 +174,7 @@ function scaleDiagramWithWindow() {
   return () => {
     cancelled = true;
     cancelAnimationFrame(frame);
-    canvas?.remove();
+    for (const canvas of levels) canvas.remove();
     for (const property of ['max-width', 'max-height', 'width', 'height', 'position', 'left', 'top', 'transform-origin', 'will-change', 'transform', 'visibility']) {
       svg.style.removeProperty(property);
     }
