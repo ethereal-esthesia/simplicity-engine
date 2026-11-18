@@ -5,17 +5,16 @@ use objc2::{rc::Retained, runtime::AnyObject, AnyThread, MainThreadMarker};
 #[cfg(target_os = "macos")]
 use objc2_app_kit::{
     NSAnimatablePropertyContainer, NSAnimationContext, NSAutoresizingMaskOptions, NSColor, NSImage,
-    NSNormalWindowLevel, NSScreenSaverWindowLevel, NSView, NSWindow, NSWindowCollectionBehavior,
+    NSNormalWindowLevel, NSScreenSaverWindowLevel, NSView, NSViewFrameDidChangeNotification,
+    NSWindow, NSWindowCollectionBehavior,
 };
 #[cfg(target_os = "macos")]
 use objc2_foundation::{
-    NSData, NSDataBase64DecodingOptions, NSNumber, NSPoint, NSProcessInfo, NSRect, NSSize, NSString,
+    NSData, NSDataBase64DecodingOptions, NSNotification, NSNotificationCenter, NSPoint,
+    NSProcessInfo, NSRect, NSSize, NSString,
 };
 #[cfg(target_os = "macos")]
-use objc2_quartz_core::{
-    kCAFillModeForwards, kCAFilterTrilinear, CABasicAnimation, CALayer, CAMediaTiming,
-    CAMediaTimingFunction,
-};
+use objc2_quartz_core::{kCAFilterTrilinear, CALayer, CAMediaTimingFunction, CATransaction};
 #[cfg(all(desktop, not(target_os = "macos")))]
 use simplicity_core::window_geometry::{edge_deltas, interpolate_edges};
 #[cfg(desktop)]
@@ -363,7 +362,6 @@ fn animate_appkit_frame_with_bitmap(
                     return Err("Cannot animate an empty diagram or window".to_owned());
                 }
                 let initial_bitmap_frame = scaled_bitmap_frame(start, start, bitmap);
-                let bitmap_frame = scaled_bitmap_frame(start, target, bitmap);
                 parent.setWantsLayer(true);
                 let parent_layer = parent
                     .layer()
@@ -394,6 +392,38 @@ fn animate_appkit_frame_with_bitmap(
                     layer.removeFromSuperlayer();
                     return Ok(false);
                 }
+                let center = NSNotificationCenter::defaultCenter();
+                let posted_frame_changes = parent.postsFrameChangedNotifications();
+                parent.setPostsFrameChangedNotifications(true);
+                let observed_parent =
+                    std::sync::atomic::AtomicPtr::new(std::ptr::from_ref(&*parent).cast_mut());
+                let observed_layer =
+                    std::sync::atomic::AtomicPtr::new(std::ptr::from_ref(&*layer).cast_mut());
+                let on_resize = RcBlock::new(move |_: std::ptr::NonNull<NSNotification>| {
+                    if MainThreadMarker::new().is_none() {
+                        eprintln!("Diagram resize notification arrived off the main thread");
+                        return;
+                    }
+                    // The completion handler retains both objects until the observer is removed.
+                    let parent =
+                        unsafe { &*observed_parent.load(std::sync::atomic::Ordering::Relaxed) };
+                    let layer =
+                        unsafe { &*observed_layer.load(std::sync::atomic::Ordering::Relaxed) };
+                    let size = parent.bounds().size;
+                    CATransaction::begin();
+                    CATransaction::setDisableActions(true);
+                    layer.setFrame(scaled_bitmap_frame(start, size, bitmap));
+                    CATransaction::commit();
+                });
+                // NSView frame notifications are posted on the AppKit main thread.
+                let observer = unsafe {
+                    center.addObserverForName_object_queue_usingBlock(
+                        Some(NSViewFrameDidChangeNotification),
+                        Some(&parent),
+                        None,
+                        &on_resize,
+                    )
+                };
                 NSAnimationContext::beginGrouping();
                 let context = NSAnimationContext::currentContext();
                 context.setDuration(WINDOW_ANIMATION_DURATION.as_secs_f64());
@@ -407,33 +437,13 @@ fn animate_appkit_frame_with_bitmap(
                 let completion_sender = sender.clone();
                 let completion_layer = layer.clone();
                 let completion = RcBlock::new(move || {
+                    unsafe { center.removeObserver((&*observer).as_ref()) };
+                    parent.setPostsFrameChangedNotifications(posted_frame_changes);
                     retained_view.setHidden(false);
                     completion_layer.removeFromSuperlayer();
                     let _ = completion_sender.send(Ok(()));
                 });
                 context.setCompletionHandler(Some(&completion));
-                let position = layer.position();
-                let scale = bitmap_frame.size.width / initial_bitmap_frame.size.width;
-                for (key, from, to) in [
-                    ("position.x", position.x, target.width / 2.0),
-                    ("position.y", position.y, target.height / 2.0),
-                    ("transform.scale", 1.0, scale),
-                ] {
-                    let key = NSString::from_str(key);
-                    let animation = CABasicAnimation::animationWithKeyPath(Some(&key));
-                    let from = NSNumber::numberWithDouble(from);
-                    let to = NSNumber::numberWithDouble(to);
-                    // These key paths all accept numeric values.
-                    unsafe {
-                        animation.setFromValue(Some(&from));
-                        animation.setToValue(Some(&to));
-                        animation.setFillMode(kCAFillModeForwards);
-                    }
-                    animation.setDuration(WINDOW_ANIMATION_DURATION.as_secs_f64());
-                    animation.setTimingFunction(Some(&timing));
-                    animation.setRemovedOnCompletion(false);
-                    layer.addAnimation_forKey(&animation, Some(&key));
-                }
                 ns_window
                     .animator()
                     .setFrame_display_animate(window_frame, true, true);
@@ -1052,14 +1062,27 @@ mod tests {
             for progress in [0.0, 0.25, 0.5, 0.75, 1.0] {
                 let window_width = start.width + (target.width - start.width) * progress;
                 let window_height = start.height + (target.height - start.height) * progress;
-                let view_width = begin.size.width + (end.size.width - begin.size.width) * progress;
-                let view_height =
-                    begin.size.height + (end.size.height - begin.size.height) * progress;
-                let x = begin.origin.x + (end.origin.x - begin.origin.x) * progress;
-                let y = begin.origin.y + (end.origin.y - begin.origin.y) * progress;
+                let current = scaled_bitmap_frame(
+                    start,
+                    NSSize {
+                        width: window_width,
+                        height: window_height,
+                    },
+                    bitmap,
+                );
+                let view_width = current.size.width;
+                let view_height = current.size.height;
+                let x = current.origin.x;
+                let y = current.origin.y;
                 assert!((view_width / bitmap.width - view_height / bitmap.height).abs() < 1e-10);
                 assert!((2.0 * x + view_width - window_width).abs() < 1e-10);
                 assert!((2.0 * y + view_height - window_height).abs() < 1e-10);
+                assert!(
+                    (view_width
+                        - (begin.size.width + (end.size.width - begin.size.width) * progress))
+                        .abs()
+                        < 1e-10
+                );
             }
         }
     }
