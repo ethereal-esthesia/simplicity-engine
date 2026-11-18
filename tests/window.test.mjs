@@ -11,6 +11,7 @@ const source = (await readFile(new URL('../web/main.js', import.meta.url), 'utf8
 
 async function windowApp(invoke, {
   diagram, imageDecode, whenIdle = async () => {}, onFrame = () => {}, frameLimit = 4,
+  pngData = () => 'data:image/png;base64,c25hcHNob3Q=',
 } = {}) {
   const listeners = {};
   const attributes = {};
@@ -32,17 +33,24 @@ async function windowApp(invoke, {
     '#window-surface': surface, '#diagram': diagram, '#diagram-view': {},
   };
   let animationFrames = 0;
+  let pendingFrame;
+  const canvases = [];
   const context = {
     document: {
       querySelector: selector => elements[selector],
       addEventListener(name, callback) { listeners[name] = callback; },
-      createElement: () => ({
-        style: {},
-        getContext: () => ({ drawImage() {} }),
-        remove() {},
-      }),
+      createElement: () => {
+        const canvas = {
+          style: {},
+          getContext: () => ({ drawImage() {} }),
+          toDataURL: pngData,
+          remove() {},
+        };
+        canvases.push(canvas);
+        return canvas;
+      },
     },
-    window: { __TAURI__: { core: { invoke } } },
+    window: { __TAURI__: { core: { invoke } }, screenX: 10, screenY: 20 },
     setupWindowInteractions,
     createDiagramViewer: () => ({
       load: async () => {},
@@ -57,6 +65,7 @@ async function windowApp(invoke, {
     requestAnimationFrame: callback => {
       animationFrames++;
       if (animationFrames <= frameLimit) queueMicrotask(() => { onFrame(); callback(); });
+      else pendingFrame = callback;
       return animationFrames;
     },
     cancelAnimationFrame() {},
@@ -67,13 +76,70 @@ async function windowApp(invoke, {
     devicePixelRatio: 1,
     Image: class { decode() { return imageDecode ? imageDecode() : Promise.reject(new Error('decode unavailable')); } },
     XMLSerializer: class { serializeToString() { return '<svg/>'; } },
-    performance: { now: () => 1000 },
+    performance: { now: () => 1000, timeOrigin: 10000 },
     console: { error() {} },
   };
   vm.runInNewContext(source, context);
   await new Promise(resolve => setImmediate(resolve));
-  return { button, status, attributes, listeners };
+  return {
+    button, status, attributes, listeners, context, canvases,
+    runFrame() {
+      const callback = pendingFrame;
+      pendingFrame = undefined;
+      callback();
+    },
+  };
 }
+
+test('bitmap scale and position follow the current viewport during shrink', async () => {
+  let finishShrink;
+  let styleAttribute = 'max-width: 1512px;';
+  const svg = {
+    style: {
+      get cssText() { return styleAttribute; },
+      set cssText(value) { styleAttribute = value; },
+    },
+    getBoundingClientRect: () => ({ width: 1512, height: 932 }),
+    getAttribute: () => styleAttribute,
+    setAttribute: (name, value) => { if (name === 'style') styleAttribute = value; },
+    removeAttribute: () => {},
+    cloneNode: () => ({ setAttribute() {}, removeAttribute() {} }),
+  };
+  const app = await windowApp(async command => {
+    if (command === 'is_desktop') return true;
+    if (command === 'load_diagram_source') return 'flowchart TD\n  A --> B';
+    if (command === 'prepare_window_expansion') return 'top-right';
+    if (command === 'shrink_window') return new Promise(resolve => { finishShrink = resolve; });
+  }, {
+    diagram: { querySelector: () => svg, append() {} },
+    imageDecode: async () => {},
+  });
+  app.context.innerWidth = 1812;
+  app.context.innerHeight = 972;
+  app.listeners.click({ detail: 0 });
+  await new Promise(resolve => setImmediate(resolve));
+  app.listeners.keydown({ key: 'Escape', preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(finishShrink);
+  app.context.innerWidth = 1014;
+  app.context.innerHeight = 563;
+  app.runFrame();
+  const scale = 1014 / 1812;
+  const x = (1014 - 1512 * scale) / 2;
+  const y = (563 - 932 * scale) / 2;
+  assert.equal(app.canvases[0].style.transform, `translate(${x}px, ${y}px) scale(${scale})`);
+  assert.ok(x > 0);
+  app.context.innerWidth = 162;
+  app.context.innerHeight = 126;
+  app.runFrame();
+  const smallScale = 162 / 1812;
+  const smallX = (162 - 1512 * smallScale) / 2;
+  const smallY = (126 - 932 * smallScale) / 2;
+  assert.equal(app.canvases[3].style.transform, `translate(${smallX}px, ${smallY}px) scale(${smallScale})`);
+  assert.ok(smallX > 0);
+  finishShrink();
+  await new Promise(resolve => setImmediate(resolve));
+});
 
 test('shrink restores the SVG inline styles after success or failure', async () => {
   for (const originalStyle of ['max-width: 168px; color: red;', null]) {
@@ -183,6 +249,120 @@ test('does not stall shrinking if animation frames are suspended', async () => {
   assert.equal(styleAttribute, 'max-width: 168px;');
 });
 
+test('buffers bitmap geometry and reports it after a debug shrink', async () => {
+  let styleAttribute = 'max-width: 168px;';
+  const svg = {
+    style: {
+      get cssText() { return styleAttribute; },
+      set cssText(value) { styleAttribute = value; },
+    },
+    getBoundingClientRect: () => ({ width: 168, height: 200 }),
+    getAttribute: () => styleAttribute,
+    setAttribute: (name, value) => { if (name === 'style') styleAttribute = value; },
+    removeAttribute: () => {},
+    cloneNode: () => ({ setAttribute() {}, removeAttribute() {} }),
+  };
+  const commands = [];
+  let report;
+  const app = await windowApp(async (command, args) => {
+    commands.push(command);
+    if (command === 'is_desktop' || command === 'shrink_debug_enabled') return true;
+    if (command === 'load_diagram_source') return 'flowchart TD\n  A --> B';
+    if (command === 'prepare_window_expansion') return 'top-left';
+    if (command === 'report_shrink_debug') report = JSON.parse(args.trace);
+  }, {
+    diagram: { querySelector: () => svg, append() {} },
+    imageDecode: async () => {},
+  });
+  app.listeners.click({ detail: 0 });
+  await new Promise(resolve => setImmediate(resolve));
+  app.listeners.keydown({ key: 'Escape', preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(commands.indexOf('shrink_window') < commands.indexOf('report_shrink_debug'));
+  assert.deepEqual(report.samples[0], [11000, 1000, 800, 10, 20, 416, 300, 1, 0]);
+  assert.equal(report.start.bitmap_width, 168);
+  assert.equal(report.dropped, 0);
+});
+
+test('passes the bitmap to native scaling without updating its transform per frame', async () => {
+  let finishShrink;
+  let args;
+  let styleAttribute = 'max-width: 168px;';
+  const svg = {
+    style: {
+      get cssText() { return styleAttribute; },
+      set cssText(value) { styleAttribute = value; },
+    },
+    getBoundingClientRect: () => ({ width: 168, height: 200 }),
+    getAttribute: () => styleAttribute,
+    setAttribute: (name, value) => { if (name === 'style') styleAttribute = value; },
+    removeAttribute: () => {},
+    cloneNode: () => ({ setAttribute() {}, removeAttribute() {} }),
+  };
+  const app = await windowApp(async (command, input) => {
+    if (command === 'is_desktop' || command === 'native_shrink_scaling') return true;
+    if (command === 'load_diagram_source') return 'flowchart TD\n  A --> B';
+    if (command === 'prepare_window_expansion') return 'top-right';
+    if (command === 'shrink_window') {
+      args = input;
+      return new Promise(resolve => { finishShrink = resolve; });
+    }
+  }, {
+    diagram: { querySelector: () => svg, append() {} },
+    imageDecode: async () => {},
+  });
+  app.listeners.click({ detail: 0 });
+  await new Promise(resolve => setImmediate(resolve));
+  app.listeners.keydown({ key: 'Escape', preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(args.snapshotPng, 'c25hcHNob3Q=');
+  assert.equal(args.bitmapWidth, 168);
+  assert.equal(args.bitmapHeight, 200);
+  assert.equal(app.canvases[0].style.transform, 'translate(416px, 300px) scale(1)');
+  app.context.innerWidth = 500;
+  assert.equal(app.canvases[0].style.transform, 'translate(416px, 300px) scale(1)');
+  finishShrink();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(styleAttribute, 'max-width: 168px;');
+});
+
+test('uses web scaling when the native bitmap cannot be serialized', async () => {
+  let finishShrink;
+  let args;
+  const svg = {
+    style: { cssText: 'max-width: 168px;' },
+    getBoundingClientRect: () => ({ width: 168, height: 200 }),
+    getAttribute: () => 'max-width: 168px;',
+    setAttribute() {},
+    removeAttribute() {},
+    cloneNode: () => ({ setAttribute() {}, removeAttribute() {} }),
+  };
+  const app = await windowApp(async (command, input) => {
+    if (command === 'is_desktop' || command === 'native_shrink_scaling') return true;
+    if (command === 'load_diagram_source') return 'flowchart TD\n  A --> B';
+    if (command === 'prepare_window_expansion') return 'top-right';
+    if (command === 'shrink_window') {
+      args = input;
+      return new Promise(resolve => { finishShrink = resolve; });
+    }
+  }, {
+    diagram: { querySelector: () => svg, append() {} },
+    imageDecode: async () => {},
+    pngData: () => { throw new Error('Cannot serialize canvas'); },
+  });
+  app.listeners.click({ detail: 0 });
+  await new Promise(resolve => setImmediate(resolve));
+  app.listeners.keydown({ key: 'Escape', preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(args.snapshotPng, null);
+  app.context.innerWidth = 500;
+  app.context.innerHeight = 400;
+  app.runFrame();
+  assert.equal(app.canvases[1].style.transform, 'translate(208px, 150px) scale(0.5)');
+  finishShrink();
+  await new Promise(resolve => setImmediate(resolve));
+});
+
 test('prepares the selected corner before expanding and collapses on Escape', async () => {
   const commands = [];
   const app = await windowApp(async command => {
@@ -199,7 +379,8 @@ test('prepares the selected corner before expanding and collapses on Escape', as
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(app.attributes['aria-expanded'], 'false');
   assert.deepEqual(commands, [
-    'is_desktop', 'load_diagram_source', 'prepare_window_expansion', 'expand_window', 'shrink_window',
+    'is_desktop', 'load_diagram_source', 'shrink_debug_enabled', 'native_shrink_scaling',
+    'prepare_window_expansion', 'expand_window', 'shrink_window',
   ]);
 });
 
@@ -256,7 +437,8 @@ test('cancels a prepared expansion if the animation command fails', async () => 
   assert.equal(app.button.disabled, false);
   assert.match(app.status.textContent, /animation failed/);
   assert.deepEqual(commands, [
-    'is_desktop', 'load_diagram_source', 'prepare_window_expansion', 'expand_window', 'cancel_window_expansion',
+    'is_desktop', 'load_diagram_source', 'shrink_debug_enabled', 'native_shrink_scaling',
+    'prepare_window_expansion', 'expand_window', 'cancel_window_expansion',
   ]);
 });
 

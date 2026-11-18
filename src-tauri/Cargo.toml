@@ -21,9 +21,10 @@ tempfile = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "0.6.2"
-objc2-app-kit = { version = "0.3.2", features = ["NSAnimation", "NSAnimationContext", "NSColor", "NSResponder", "NSView", "NSWindow", "block2", "objc2-core-graphics", "objc2-quartz-core", "std"] }
-objc2-foundation = { version = "0.3.2", features = ["NSGeometry", "NSProcessInfo", "objc2-core-foundation", "std"] }
-objc2-quartz-core = { version = "0.3.2", features = ["CALayer", "CAMediaTimingFunction", "objc2-core-graphics", "std"] }
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3.2", features = ["NSAnimation", "NSAnimationContext", "NSColor", "NSGraphicsContext", "NSImage", "NSImageRep", "NSResponder", "NSView", "NSWindow", "block2", "objc2-core-graphics", "objc2-quartz-core", "std"] }
+objc2-foundation = { version = "0.3.2", features = ["NSData", "NSGeometry", "NSProcessInfo", "NSString", "NSValue", "objc2-core-foundation", "std"] }
+objc2-quartz-core = { version = "0.3.2", features = ["CAAnimation", "CALayer", "CAMediaTiming", "CAMediaTimingFunction", "objc2-core-foundation", "objc2-core-graphics", "std"] }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

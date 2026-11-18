@@ -41,7 +41,19 @@ does not fade in before the native animation finishes. Click outside the window
 and press Escape to verify both shrink it back to its original dragged position
 with all four corners rounded throughout. Tauri command failures must be visible.
 On macOS, the native white backing matches the web surface and keeps the
-rounded corner stationary when the webview redraw lags.
+rounded corner stationary when the webview redraw lags. During shrink, verify
+that the diagram stays centered, never briefly moves backwards, and remains
+smoothly filtered as it gets smaller. Reopen and edit it after shrinking.
+To investigate shrink jitter, run
+`SIMPLICITY_SHRINK_DEBUG=1 make run DIAGRAM=/path/to/diagram.mmd` and reproduce
+the shrink. After the animation, the terminal prints `[shrink-debug]` native
+move/resize events in physical pixels and buffered web animation samples in
+CSS pixels. Both use Unix-epoch milliseconds. Bitmap coordinates and scale
+are the values requested by the web animation, not measured screen positions;
+on macOS, the web bitmap remains at scale 1 while AppKit scales a native copy.
+Native events may not be emitted for every displayed frame. The trace
+contains window geometry, not diagram contents. Omit the variable to disable
+tracing.
 On macOS, switch between desktop Spaces and a fullscreen application such as
 Minecraft and verify the compact window remains visible and can be expanded,
 edited, and collapsed without changing the application's display mode.

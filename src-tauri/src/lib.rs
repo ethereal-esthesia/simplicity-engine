@@ -1,14 +1,21 @@
 #[cfg(target_os = "macos")]
 use block2::RcBlock;
 #[cfg(target_os = "macos")]
+use objc2::{rc::Retained, runtime::AnyObject, AnyThread, MainThreadMarker};
+#[cfg(target_os = "macos")]
 use objc2_app_kit::{
-    NSAnimatablePropertyContainer, NSAnimationContext, NSAutoresizingMaskOptions, NSColor,
+    NSAnimatablePropertyContainer, NSAnimationContext, NSAutoresizingMaskOptions, NSColor, NSImage,
     NSNormalWindowLevel, NSScreenSaverWindowLevel, NSView, NSWindow, NSWindowCollectionBehavior,
 };
 #[cfg(target_os = "macos")]
-use objc2_foundation::{NSPoint, NSProcessInfo, NSRect, NSSize};
+use objc2_foundation::{
+    NSData, NSDataBase64DecodingOptions, NSNumber, NSPoint, NSProcessInfo, NSRect, NSSize, NSString,
+};
 #[cfg(target_os = "macos")]
-use objc2_quartz_core::CAMediaTimingFunction;
+use objc2_quartz_core::{
+    kCAFillModeForwards, kCAFilterTrilinear, CABasicAnimation, CALayer, CAMediaTiming,
+    CAMediaTimingFunction,
+};
 #[cfg(all(desktop, not(target_os = "macos")))]
 use simplicity_core::window_geometry::{edge_deltas, interpolate_edges};
 #[cfg(desktop)]
@@ -25,6 +32,8 @@ use std::thread;
 use std::time::Duration;
 #[cfg(all(desktop, not(target_os = "macos")))]
 use std::time::Instant;
+#[cfg(desktop)]
+use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(all(desktop, not(target_os = "macos")))]
 use tauri::LogicalSize;
 #[cfg(desktop)]
@@ -120,6 +129,20 @@ struct Expansion {
 #[cfg(desktop)]
 #[derive(Default)]
 struct WindowState(Mutex<Option<Expansion>>);
+
+#[cfg(desktop)]
+struct ShrinkDiagnostics {
+    enabled: bool,
+    events: Mutex<Option<Vec<(SystemTime, &'static str, i64, i64)>>>,
+}
+
+#[cfg(desktop)]
+fn timestamp_ms(time: SystemTime) -> f64 {
+    match time.duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration.as_secs_f64() * 1000.0,
+        Err(error) => -error.duration().as_secs_f64() * 1000.0,
+    }
+}
 
 #[cfg(target_os = "macos")]
 fn round_appkit_window(window: &WebviewWindow) -> Result<(), String> {
@@ -264,6 +287,168 @@ fn set_webview_anchor(
                     }
                 });
             let _ = sender.send(result);
+        })
+        .map_err(|error| error.to_string())?;
+    receiver.recv().map_err(|error| error.to_string())?
+}
+
+#[cfg(target_os = "macos")]
+fn scaled_bitmap_frame(start: NSSize, target: NSSize, bitmap: NSSize) -> NSRect {
+    let scale = (target.width / start.width).min(target.height / start.height);
+    let width = bitmap.width * scale;
+    let height = bitmap.height * scale;
+    NSRect {
+        origin: NSPoint {
+            x: (target.width - width) / 2.0,
+            y: (target.height - height) / 2.0,
+        },
+        size: NSSize { width, height },
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn animate_appkit_frame_with_bitmap(
+    window: &WebviewWindow,
+    frame: AppKitFrame,
+    reduced_motion: bool,
+    png: String,
+    bitmap: NSSize,
+) -> Result<(), String> {
+    let (sender, receiver) = mpsc::sync_channel(1);
+    let dispatch_window = window.clone();
+    window
+        .with_webview(move |webview| {
+            let result = (|| {
+                let view = unsafe { &*webview.inner().cast::<NSView>() };
+                let parent = unsafe { view.superview() }
+                    .ok_or_else(|| "The webview has no parent view".to_owned())?;
+                // Tauri owns the view during this callback; retain it until animation completes.
+                let retained_view =
+                    unsafe { Retained::retain(view as *const NSView as *mut NSView) }
+                        .ok_or_else(|| "Cannot retain the webview".to_owned())?;
+                MainThreadMarker::new()
+                    .ok_or_else(|| "Bitmap animation requires the main thread".to_owned())?;
+                let encoded = NSString::from_str(&png);
+                let data = NSData::initWithBase64EncodedString_options(
+                    NSData::alloc(),
+                    &encoded,
+                    NSDataBase64DecodingOptions::empty(),
+                )
+                .ok_or_else(|| "Cannot decode diagram bitmap".to_owned())?;
+                let image = NSImage::initWithData(NSImage::alloc(), &data)
+                    .ok_or_else(|| "Cannot load diagram bitmap".to_owned())?;
+                let cg_image = unsafe {
+                    image.CGImageForProposedRect_context_hints(std::ptr::null_mut(), None, None)
+                }
+                .ok_or_else(|| "Cannot convert diagram bitmap to a native image".to_owned())?;
+                let pointer = dispatch_window
+                    .ns_window()
+                    .map_err(|error| error.to_string())?;
+                let ns_window = unsafe { &*pointer.cast::<NSWindow>() };
+                let current_window = ns_window.frame();
+                let start = parent.bounds().size;
+                let target = NSSize {
+                    width: start.width + frame.width - current_window.size.width,
+                    height: start.height + frame.height - current_window.size.height,
+                };
+                if start.width <= 0.0
+                    || start.height <= 0.0
+                    || target.width <= 0.0
+                    || target.height <= 0.0
+                    || !bitmap.width.is_finite()
+                    || !bitmap.height.is_finite()
+                    || bitmap.width <= 0.0
+                    || bitmap.height <= 0.0
+                {
+                    return Err("Cannot animate an empty diagram or window".to_owned());
+                }
+                let initial_bitmap_frame = scaled_bitmap_frame(start, start, bitmap);
+                let bitmap_frame = scaled_bitmap_frame(start, target, bitmap);
+                parent.setWantsLayer(true);
+                let parent_layer = parent
+                    .layer()
+                    .ok_or_else(|| "The window has no backing layer for the diagram".to_owned())?;
+                let layer = CALayer::layer();
+                layer.setFrame(initial_bitmap_frame);
+                // CALayer accepts a CGImage as its contents.
+                unsafe {
+                    let contents = &*std::ptr::from_ref(&*cg_image).cast::<AnyObject>();
+                    layer.setContents(Some(contents));
+                    layer.setMinificationFilter(kCAFilterTrilinear);
+                }
+                let window_frame = NSRect {
+                    origin: NSPoint {
+                        x: frame.x,
+                        y: frame.y,
+                    },
+                    size: NSSize {
+                        width: frame.width,
+                        height: frame.height,
+                    },
+                };
+                parent_layer.addSublayer(&layer);
+                view.setHidden(true);
+                if reduced_motion {
+                    ns_window.setFrame_display(window_frame, true);
+                    retained_view.setHidden(false);
+                    layer.removeFromSuperlayer();
+                    return Ok(false);
+                }
+                NSAnimationContext::beginGrouping();
+                let context = NSAnimationContext::currentContext();
+                context.setDuration(WINDOW_ANIMATION_DURATION.as_secs_f64());
+                let timing = CAMediaTimingFunction::functionWithControlPoints(
+                    1.0 / 3.0,
+                    0.0,
+                    2.0 / 3.0,
+                    1.0,
+                );
+                context.setTimingFunction(Some(&timing));
+                let completion_sender = sender.clone();
+                let completion_layer = layer.clone();
+                let completion = RcBlock::new(move || {
+                    retained_view.setHidden(false);
+                    completion_layer.removeFromSuperlayer();
+                    let _ = completion_sender.send(Ok(()));
+                });
+                context.setCompletionHandler(Some(&completion));
+                let position = layer.position();
+                let scale = bitmap_frame.size.width / initial_bitmap_frame.size.width;
+                for (key, from, to) in [
+                    ("position.x", position.x, target.width / 2.0),
+                    ("position.y", position.y, target.height / 2.0),
+                    ("transform.scale", 1.0, scale),
+                ] {
+                    let key = NSString::from_str(key);
+                    let animation = CABasicAnimation::animationWithKeyPath(Some(&key));
+                    let from = NSNumber::numberWithDouble(from);
+                    let to = NSNumber::numberWithDouble(to);
+                    // These key paths all accept numeric values.
+                    unsafe {
+                        animation.setFromValue(Some(&from));
+                        animation.setToValue(Some(&to));
+                        animation.setFillMode(kCAFillModeForwards);
+                    }
+                    animation.setDuration(WINDOW_ANIMATION_DURATION.as_secs_f64());
+                    animation.setTimingFunction(Some(&timing));
+                    animation.setRemovedOnCompletion(false);
+                    layer.addAnimation_forKey(&animation, Some(&key));
+                }
+                ns_window
+                    .animator()
+                    .setFrame_display_animate(window_frame, true, true);
+                NSAnimationContext::endGrouping();
+                Ok(true)
+            })();
+            match result {
+                Ok(true) => {}
+                Ok(false) => {
+                    let _ = sender.send(Ok(()));
+                }
+                Err(error) => {
+                    let _ = sender.send(Err(error));
+                }
+            }
         })
         .map_err(|error| error.to_string())?;
     receiver.recv().map_err(|error| error.to_string())?
@@ -489,10 +674,69 @@ fn expand_native_window(window: WebviewWindow, reduced_motion: bool) -> Result<(
 }
 
 #[cfg(desktop)]
-fn shrink_native_window(window: WebviewWindow, reduced_motion: bool) -> Result<(), String> {
-    let expansion = saved_expansion(&window)?;
-    animate_to_original(window.clone(), expansion, reduced_motion)?;
-    clear_expansion(&window)
+fn shrink_native_window(
+    window: WebviewWindow,
+    reduced_motion: bool,
+    snapshot_png: Option<String>,
+    bitmap_width: f64,
+    bitmap_height: f64,
+) -> Result<(), String> {
+    let diagnostics = window.state::<ShrinkDiagnostics>();
+    if diagnostics.enabled {
+        *diagnostics
+            .events
+            .lock()
+            .map_err(|error| error.to_string())? = Some(Vec::new());
+    }
+    let started = SystemTime::now();
+    let result = (|| {
+        let expansion = saved_expansion(&window)?;
+        #[cfg(target_os = "macos")]
+        if let Some(png) = snapshot_png {
+            let animation = animate_appkit_frame_with_bitmap(
+                &window,
+                expansion.original_frame,
+                reduced_motion,
+                png,
+                NSSize {
+                    width: bitmap_width,
+                    height: bitmap_height,
+                },
+            );
+            animation?;
+        } else {
+            animate_to_original(window.clone(), expansion, reduced_motion)?;
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = (snapshot_png, bitmap_width, bitmap_height);
+            animate_to_original(window.clone(), expansion, reduced_motion)?;
+        }
+        clear_expansion(&window)
+    })();
+    if diagnostics.enabled {
+        let events = diagnostics
+            .events
+            .lock()
+            .map_err(|error| error.to_string())?
+            .take();
+        eprintln!(
+            "[shrink-debug] native start_ms={:.3} end_ms={:.3}",
+            timestamp_ms(started),
+            timestamp_ms(SystemTime::now())
+        );
+        if let Some(events) = events {
+            for (time, kind, a, b) in events {
+                eprintln!(
+                    "[shrink-debug] native event_ms={:.3} {kind}={a},{b}",
+                    timestamp_ms(time)
+                );
+            }
+        } else {
+            eprintln!("[shrink-debug] Native event recording was not active");
+        }
+    }
+    result
 }
 
 #[cfg(desktop)]
@@ -549,10 +793,44 @@ async fn expand_window(window: WebviewWindow, reduced_motion: bool) -> Result<()
 
 #[cfg(desktop)]
 #[tauri::command]
-async fn shrink_window(window: WebviewWindow, reduced_motion: bool) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || shrink_native_window(window, reduced_motion))
-        .await
-        .map_err(|error| error.to_string())?
+async fn shrink_window(
+    window: WebviewWindow,
+    reduced_motion: bool,
+    snapshot_png: Option<String>,
+    bitmap_width: f64,
+    bitmap_height: f64,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        shrink_native_window(
+            window,
+            reduced_motion,
+            snapshot_png,
+            bitmap_width,
+            bitmap_height,
+        )
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+fn shrink_debug_enabled(diagnostics: tauri::State<'_, ShrinkDiagnostics>) -> bool {
+    diagnostics.enabled
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+fn native_shrink_scaling() -> bool {
+    cfg!(target_os = "macos")
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+fn report_shrink_debug(diagnostics: tauri::State<'_, ShrinkDiagnostics>, trace: String) {
+    if diagnostics.enabled {
+        eprintln!("[shrink-debug] web {trace}");
+    }
 }
 
 #[cfg(desktop)]
@@ -651,10 +929,42 @@ pub fn run() {
     let builder = builder
         .manage(diagram)
         .manage(WindowState::default())
+        .manage(ShrinkDiagnostics {
+            enabled: std::env::var_os("SIMPLICITY_SHRINK_DEBUG").is_some_and(|value| value == "1"),
+            events: Mutex::new(None),
+        })
         .setup(move |app| {
             let window = app
                 .get_webview_window("main")
                 .ok_or_else(|| std::io::Error::other("The main window is not configured"))?;
+            let handle = app.handle().clone();
+            window.on_window_event(move |event| {
+                let diagnostics = handle.state::<ShrinkDiagnostics>();
+                if !diagnostics.enabled {
+                    return;
+                }
+                let sample = match event {
+                    tauri::WindowEvent::Moved(position) => {
+                        Some(("position_px", i64::from(position.x), i64::from(position.y)))
+                    }
+                    tauri::WindowEvent::Resized(size) => {
+                        Some(("size_px", i64::from(size.width), i64::from(size.height)))
+                    }
+                    _ => None,
+                };
+                if let Some((kind, a, b)) = sample {
+                    match diagnostics.events.lock() {
+                        Ok(mut events) => {
+                            if let Some(events) = events.as_mut() {
+                                events.push((SystemTime::now(), kind, a, b));
+                            }
+                        }
+                        Err(error) => {
+                            eprintln!("[shrink-debug] Cannot record window event: {error}")
+                        }
+                    }
+                }
+            });
             let close =
                 tauri::menu::MenuItem::with_id(app, CLOSE_MENU_ITEM, "Close", true, None::<&str>)?;
             let menu = tauri::menu::Menu::with_items(app, &[&close])?;
@@ -698,6 +1008,9 @@ pub fn run() {
             cancel_window_expansion,
             expand_window,
             shrink_window,
+            shrink_debug_enabled,
+            native_shrink_scaling,
+            report_shrink_debug,
             start_window_dragging,
             show_compact_menu,
             load_diagram_source,
@@ -713,6 +1026,43 @@ pub fn run() {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scaled_bitmap_stays_centered_and_proportional_during_animation() {
+        for start in [
+            NSSize {
+                width: 1812.0,
+                height: 972.0,
+            },
+            NSSize {
+                width: 972.0,
+                height: 1812.0,
+            },
+        ] {
+            let target = NSSize {
+                width: 88.0,
+                height: 88.0,
+            };
+            let bitmap = NSSize {
+                width: start.width * 0.8,
+                height: start.height * 0.9,
+            };
+            let begin = scaled_bitmap_frame(start, start, bitmap);
+            let end = scaled_bitmap_frame(start, target, bitmap);
+            for progress in [0.0, 0.25, 0.5, 0.75, 1.0] {
+                let window_width = start.width + (target.width - start.width) * progress;
+                let window_height = start.height + (target.height - start.height) * progress;
+                let view_width = begin.size.width + (end.size.width - begin.size.width) * progress;
+                let view_height =
+                    begin.size.height + (end.size.height - begin.size.height) * progress;
+                let x = begin.origin.x + (end.origin.x - begin.origin.x) * progress;
+                let y = begin.origin.y + (end.origin.y - begin.origin.y) * progress;
+                assert!((view_width / bitmap.width - view_height / bitmap.height).abs() < 1e-10);
+                assert!((2.0 * x + view_width - window_width).abs() < 1e-10);
+                assert!((2.0 * y + view_height - window_height).abs() < 1e-10);
+            }
+        }
+    }
 
     #[test]
     fn overlay_joins_fullscreen_spaces_without_conflicting_behaviors() {

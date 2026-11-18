@@ -17,6 +17,8 @@ let shrinkRequested = false;
 let diagramViewer = null;
 let diagramReady = Promise.resolve();
 let diagramLoadError = null;
+let shrinkDebug = false;
+let nativeShrinkScaling = false;
 
 function showError(error) {
   status.textContent = `Unable to control the window: ${error.message ?? String(error)}`;
@@ -82,7 +84,12 @@ async function shrinkWindow() {
       await waitForDiagramPaint();
     }
     animation.start();
-    await invoke('shrink_window', { reducedMotion: reducedMotion.matches });
+    await invoke('shrink_window', {
+      reducedMotion: reducedMotion.matches,
+      snapshotPng: animation.snapshotPng ?? null,
+      bitmapWidth: animation.bitmapWidth ?? 0,
+      bitmapHeight: animation.bitmapHeight ?? 0,
+    });
     isExpanded = false;
     expandButton.setAttribute('aria-expanded', 'false');
     expandButton.disabled = false;
@@ -91,14 +98,18 @@ async function shrinkWindow() {
   } catch (error) {
     showError(error);
   } finally {
-    animation?.cleanup();
+    const trace = animation?.cleanup();
     diagramRoot.inert = wasInert;
     isShrinking = false;
+    if (trace) {
+      try {
+        await invoke('report_shrink_debug', { trace: JSON.stringify(trace) });
+      } catch (error) {
+        showError(error);
+      }
+    }
   }
 }
-
-const COMPACT_SIZE = 88;
-const SHRINK_MS = 1500;
 
 function waitForDiagramPaint() {
   return new Promise(resolve => {
@@ -163,6 +174,18 @@ async function prepareDiagramShrink() {
     levels = [];
   }
 
+  let snapshotPng = null;
+  if (nativeShrinkScaling && levels.length) {
+    try {
+      const data = levels[0].toDataURL('image/png');
+      const prefix = 'data:image/png;base64,';
+      if (!data.startsWith(prefix)) throw new Error('Canvas did not produce a PNG');
+      snapshotPng = data.slice(prefix.length);
+    } catch (error) {
+      console.error('Unable to prepare native bitmap; using web animation instead:', error);
+    }
+  }
+  const useNativeScaling = snapshotPng !== null;
   let layer = svg;
   if (levels.length) {
     const x = (startW - width) / 2;
@@ -177,13 +200,14 @@ async function prepareDiagramShrink() {
     svg.style.cssText += `;${layerStyle}`;
   }
 
-  let started;
   let frame;
+  const samples = shrinkDebug ? [] : null;
+  let dropped = 0;
+  let firstFrame = true;
   const tick = () => {
-    const t = reducedMotion.matches ? 1 : Math.min((performance.now() - started) / SHRINK_MS, 1);
-    const eased = t * t * (3 - 2 * t);
-    const w = startW + (COMPACT_SIZE - startW) * eased;
-    const h = startH + (COMPACT_SIZE - startH) * eased;
+    const now = performance.now();
+    const w = useNativeScaling ? startW : innerWidth;
+    const h = useNativeScaling ? startH : innerHeight;
     const scale = Math.max(0, Math.min(w / startW, h / startH, 1));
     const x = (w - width * scale) / 2;
     const y = (h - height * scale) / 2;
@@ -196,13 +220,25 @@ async function prepareDiagramShrink() {
         layer = levels[wanted];
       }
     }
-    layer.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-    frame = requestAnimationFrame(tick);
+    if (!useNativeScaling || firstFrame) {
+      layer.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+      firstFrame = false;
+    }
+    if (samples) {
+      if (samples.length < 600) {
+        samples.push([performance.timeOrigin + now, innerWidth, innerHeight, window.screenX, window.screenY, x, y, scale, level]);
+      } else {
+        dropped++;
+      }
+    }
+    if (!useNativeScaling || samples) frame = requestAnimationFrame(tick);
   };
   return {
     needsPaint: true,
+    snapshotPng,
+    bitmapWidth: width,
+    bitmapHeight: height,
     start() {
-      started = performance.now();
       tick();
     },
     cleanup() {
@@ -210,6 +246,15 @@ async function prepareDiagramShrink() {
       for (const canvas of levels) canvas.remove();
       if (originalStyle === null) svg.removeAttribute('style');
       else svg.setAttribute('style', originalStyle);
+      if (samples) {
+        return {
+          columns: ['epoch_ms', 'viewport_width', 'viewport_height', 'screen_x', 'screen_y', 'bitmap_x', 'bitmap_y', 'scale', 'mip_level'],
+          native_scaling: useNativeScaling,
+          start: { viewport_width: startW, viewport_height: startH, bitmap_width: width, bitmap_height: height, device_pixel_ratio: devicePixelRatio },
+          dropped,
+          samples,
+        };
+      }
     },
   };
 }
@@ -232,8 +277,16 @@ if (!invoke) {
         render: renderMermaid,
         save: source => invoke('save_diagram_source', { source }),
       });
-      diagramReady = invoke('load_diagram_source')
-        .then(source => diagramViewer.load(source))
+      diagramReady = Promise.all([
+        invoke('load_diagram_source'),
+        invoke('shrink_debug_enabled'),
+        invoke('native_shrink_scaling'),
+      ])
+        .then(([source, enabled, nativeScaling]) => {
+          shrinkDebug = enabled;
+          nativeShrinkScaling = nativeScaling;
+          return diagramViewer.load(source);
+        })
         .catch(error => {
           diagramLoadError = error;
           showError(error);
