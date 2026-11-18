@@ -121,6 +121,14 @@ function toggleDisabled(source, id, disabled) {
 export function createDiagramViewer({ root, diagram, editor, error, render, save }) {
   let editing = false;
   let busy = false;
+  let idle = Promise.resolve();
+  let resolveIdle;
+
+  function setBusy(value) {
+    busy = value;
+    if (value) idle = new Promise(resolve => { resolveIdle = resolve; });
+    else resolveIdle();
+  }
 
   function setEditing(value) {
     editing = value;
@@ -172,7 +180,7 @@ export function createDiagramViewer({ root, diagram, editor, error, render, save
 
   async function saveAndShow() {
     if (busy) return;
-    busy = true;
+    setBusy(true);
     editor.readOnly = true;
     clearError();
     try {
@@ -185,7 +193,7 @@ export function createDiagramViewer({ root, diagram, editor, error, render, save
       showError(reason);
     } finally {
       editor.readOnly = false;
-      busy = false;
+      setBusy(false);
     }
   }
 
@@ -197,7 +205,7 @@ export function createDiagramViewer({ root, diagram, editor, error, render, save
       return;
     }
     if (busy) return;
-    busy = true;
+    setBusy(true);
     clearError();
     try {
       const disabled = node.classList.contains('disabled');
@@ -215,7 +223,7 @@ export function createDiagramViewer({ root, diagram, editor, error, render, save
     } catch (reason) {
       showError(reason);
     } finally {
-      busy = false;
+      setBusy(false);
     }
   });
   diagram.addEventListener('keydown', event => {
@@ -227,6 +235,7 @@ export function createDiagramViewer({ root, diagram, editor, error, render, save
   return {
     load,
     isEditing: () => editing,
+    whenIdle: () => idle,
     saveAndShow,
     reveal() {
       root.setAttribute('aria-hidden', 'false');

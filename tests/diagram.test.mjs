@@ -78,8 +78,14 @@ test('prevents edits while a source snapshot is being saved', async () => {
   const saving = app.viewer.saveAndShow();
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(app.editor.readOnly, true);
+  let idle = false;
+  const waiting = app.viewer.whenIdle().then(() => { idle = true; });
+  await Promise.resolve();
+  assert.equal(idle, false);
   finishSave();
   await saving;
+  await waiting;
+  assert.equal(idle, true);
   assert.equal(app.editor.readOnly, false);
   assert.equal(app.viewer.isEditing(), false);
 });

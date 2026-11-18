@@ -72,8 +72,16 @@ async function shrinkWindow() {
   if (!isExpanded || isShrinking) return;
 
   isShrinking = true;
-  const stopScaling = scaleDiagramWithWindow();
+  const wasInert = diagramRoot.inert;
+  diagramRoot.inert = true;
+  let animation;
   try {
+    await diagramViewer.whenIdle();
+    animation = await prepareDiagramShrink();
+    if (animation.needsPaint) {
+      await waitForDiagramPaint();
+    }
+    animation.start();
     await invoke('shrink_window', { reducedMotion: reducedMotion.matches });
     isExpanded = false;
     expandButton.setAttribute('aria-expanded', 'false');
@@ -83,7 +91,8 @@ async function shrinkWindow() {
   } catch (error) {
     showError(error);
   } finally {
-    stopScaling();
+    animation?.cleanup();
+    diagramRoot.inert = wasInert;
     isShrinking = false;
   }
 }
@@ -91,34 +100,45 @@ async function shrinkWindow() {
 const COMPACT_SIZE = 88;
 const SHRINK_MS = 1500;
 
-// Rasterize the SVG once into a bitmap, then scale that texture each frame to match the window's animated size.
-function scaleDiagramWithWindow() {
+function waitForDiagramPaint() {
+  return new Promise(resolve => {
+    let frame;
+    const finish = () => {
+      clearTimeout(timeout);
+      cancelAnimationFrame(frame);
+      resolve();
+    };
+    const timeout = setTimeout(finish, 100);
+    frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(finish);
+    });
+  });
+}
+
+// Prepare the bitmap before the native animation starts.
+async function prepareDiagramShrink() {
   const container = document.querySelector('#diagram');
   const svg = container?.querySelector?.('svg');
-  if (!svg || diagramViewer.isEditing()) return () => {};
+  const noAnimation = { needsPaint: false, start() {}, cleanup() {} };
+  if (!svg || diagramViewer.isEditing()) return noAnimation;
   const { width, height } = svg.getBoundingClientRect();
   const startW = innerWidth;
   const startH = innerHeight;
-  if (!width || !height || !startW || !startH) return () => {};
+  if (!width || !height || !startW || !startH) return noAnimation;
   const originalStyle = svg.getAttribute('style');
   const layerStyle = `max-width:none;max-height:none;width:${width}px;height:${height}px;position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;`;
-  svg.style.cssText += `;${layerStyle}`;
-  let layer = svg;
   let levels = [];
   let level = -1;
-  let cancelled = false;
-
-  const clone = svg.cloneNode(true);
-  clone.setAttribute('width', width);
-  clone.setAttribute('height', height);
-  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  clone.removeAttribute('style');
-  const image = new Image();
-  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(clone))}`;
-  image.decode().then(() => {
-    if (cancelled) return;
+  try {
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('width', width);
+    clone.setAttribute('height', height);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.removeAttribute('style');
+    const image = new Image();
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(clone))}`;
+    await image.decode();
     const ratio = devicePixelRatio || 1;
-    // Build a mip chain by repeated high-quality halving so heavy downscales stay smooth.
     let source = image;
     let pixelsW = Math.ceil(width * ratio);
     let pixelsH = Math.ceil(height * ratio);
@@ -127,27 +147,39 @@ function scaleDiagramWithWindow() {
       canvas.width = pixelsW;
       canvas.height = pixelsH;
       const context = canvas.getContext('2d');
+      if (!context) throw new Error('Canvas 2D context is unavailable');
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = 'high';
       context.drawImage(source, 0, 0, pixelsW, pixelsH);
       canvas.style.cssText = `${layerStyle}visibility:hidden;`;
-      container.append(canvas);
       levels.push(canvas);
       source = canvas;
       pixelsW = Math.floor(pixelsW / 2);
       pixelsH = Math.floor(pixelsH / 2);
       if (pixelsW < 16 || pixelsH < 16) break;
     }
+  } catch (error) {
+    console.error('Unable to prepare diagram bitmap; using the SVG instead:', error);
+    levels = [];
+  }
+
+  let layer = svg;
+  if (levels.length) {
+    const x = (startW - width) / 2;
+    const y = (startH - height) / 2;
+    levels[0].style.transform = `translate(${x}px, ${y}px) scale(1)`;
+    levels[0].style.visibility = 'visible';
+    container.append(...levels);
     svg.style.visibility = 'hidden';
     layer = levels[0];
     level = 0;
-    levels[0].style.visibility = 'visible';
-    levels[0].style.transform = svg.style.transform;
-  }).catch(() => {});
+  } else {
+    svg.style.cssText += `;${layerStyle}`;
+  }
 
-  const started = performance.now();
-  // The webview reports its size late, so derive the window size from the native animation's smoothstep timing instead.
-  const update = () => {
+  let started;
+  let frame;
+  const tick = () => {
     const t = reducedMotion.matches ? 1 : Math.min((performance.now() - started) / SHRINK_MS, 1);
     const eased = t * t * (3 - 2 * t);
     const w = startW + (COMPACT_SIZE - startW) * eased;
@@ -165,19 +197,20 @@ function scaleDiagramWithWindow() {
       }
     }
     layer.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-  };
-  let frame = 0;
-  const tick = () => {
-    update();
     frame = requestAnimationFrame(tick);
   };
-  tick();
-  return () => {
-    cancelled = true;
-    cancelAnimationFrame(frame);
-    for (const canvas of levels) canvas.remove();
-    if (originalStyle === null) svg.removeAttribute('style');
-    else svg.setAttribute('style', originalStyle);
+  return {
+    needsPaint: true,
+    start() {
+      started = performance.now();
+      tick();
+    },
+    cleanup() {
+      if (frame !== undefined) cancelAnimationFrame(frame);
+      for (const canvas of levels) canvas.remove();
+      if (originalStyle === null) svg.removeAttribute('style');
+      else svg.setAttribute('style', originalStyle);
+    },
   };
 }
 

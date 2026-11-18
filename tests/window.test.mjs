@@ -9,7 +9,9 @@ const source = (await readFile(new URL('../web/main.js', import.meta.url), 'utf8
   .replace("import { createDiagramViewer } from './diagram-viewer.mjs';", '')
   .replace("import { renderMermaid } from './generated/mermaid-renderer.mjs';", '');
 
-async function windowApp(invoke, { diagram } = {}) {
+async function windowApp(invoke, {
+  diagram, imageDecode, whenIdle = async () => {}, onFrame = () => {}, frameLimit = 4,
+} = {}) {
   const listeners = {};
   const attributes = {};
   const eventTarget = { addEventListener(name, callback) { listeners[`window:${name}`] = callback; } };
@@ -27,13 +29,18 @@ async function windowApp(invoke, { diagram } = {}) {
   };
   const elements = {
     '#status': status, '#floating-expand': button, '#expanded-artwork': artwork,
-    '#window-surface': surface, '#diagram': diagram,
+    '#window-surface': surface, '#diagram': diagram, '#diagram-view': {},
   };
   let animationFrames = 0;
   const context = {
     document: {
       querySelector: selector => elements[selector],
       addEventListener(name, callback) { listeners[name] = callback; },
+      createElement: () => ({
+        style: {},
+        getContext: () => ({ drawImage() {} }),
+        remove() {},
+      }),
     },
     window: { __TAURI__: { core: { invoke } } },
     setupWindowInteractions,
@@ -42,18 +49,23 @@ async function windowApp(invoke, { diagram } = {}) {
       reveal() {},
       hide() {},
       isEditing: () => false,
+      whenIdle,
     }),
     renderMermaid() {},
     matchMedia: () => ({ matches: false }),
     addEventListener(name, callback) { listeners[name] = callback; },
     requestAnimationFrame: callback => {
-      if (animationFrames++ < 2) queueMicrotask(callback);
+      animationFrames++;
+      if (animationFrames <= frameLimit) queueMicrotask(() => { onFrame(); callback(); });
       return animationFrames;
     },
     cancelAnimationFrame() {},
+    setTimeout,
+    clearTimeout,
     innerWidth: 1000,
     innerHeight: 800,
-    Image: class { decode() { return new Promise(() => {}); } },
+    devicePixelRatio: 1,
+    Image: class { decode() { return imageDecode ? imageDecode() : Promise.reject(new Error('decode unavailable')); } },
     XMLSerializer: class { serializeToString() { return '<svg/>'; } },
     performance: { now: () => 1000 },
     console: { error() {} },
@@ -96,6 +108,79 @@ test('shrink restores the SVG inline styles after success or failure', async () 
       if (failure) assert.match(app.status.textContent, /shrink failed/);
     }
   }
+});
+
+test('waits for edits and a painted bitmap before shrinking the window', async () => {
+  let finishEdit;
+  let finishDecode;
+  const idle = new Promise(resolve => { finishEdit = resolve; });
+  const decoded = new Promise(resolve => { finishDecode = resolve; });
+  const events = [];
+  let styleAttribute = 'max-width: 168px;';
+  const svg = {
+    style: {
+      get cssText() { return styleAttribute; },
+      set cssText(value) { styleAttribute = value; },
+    },
+    getBoundingClientRect: () => ({ width: 168, height: 200 }),
+    getAttribute: () => styleAttribute,
+    setAttribute: (name, value) => { if (name === 'style') styleAttribute = value; },
+    removeAttribute: () => {},
+    cloneNode: () => ({ setAttribute() {}, removeAttribute() {} }),
+  };
+  const app = await windowApp(async command => {
+    events.push(command);
+    if (command === 'is_desktop') return true;
+    if (command === 'load_diagram_source') return 'flowchart TD\n  A --> B';
+    if (command === 'prepare_window_expansion') return 'top-left';
+    if (command === 'shrink_window') assert.equal(svg.style.visibility, 'hidden');
+  }, {
+    diagram: { querySelector: () => svg, append: () => events.push('bitmap') },
+    whenIdle: () => idle,
+    imageDecode: () => { events.push('decode'); return decoded; },
+    onFrame: () => events.push('frame'),
+  });
+  app.listeners.click({ detail: 0 });
+  await new Promise(resolve => setImmediate(resolve));
+  events.length = 0;
+  app.listeners.keydown({ key: 'Escape', preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(events, []);
+  finishEdit();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(events, ['decode']);
+  finishDecode();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(events, ['decode', 'bitmap', 'frame', 'frame', 'shrink_window']);
+  assert.equal(styleAttribute, 'max-width: 168px;');
+});
+
+test('does not stall shrinking if animation frames are suspended', async () => {
+  let styleAttribute = 'max-width: 168px;';
+  const svg = {
+    style: {
+      get cssText() { return styleAttribute; },
+      set cssText(value) { styleAttribute = value; },
+    },
+    getBoundingClientRect: () => ({ width: 168, height: 200 }),
+    getAttribute: () => styleAttribute,
+    setAttribute: (name, value) => { if (name === 'style') styleAttribute = value; },
+    removeAttribute: () => {},
+    cloneNode: () => ({ setAttribute() {}, removeAttribute() {} }),
+  };
+  const commands = [];
+  const app = await windowApp(async command => {
+    commands.push(command);
+    if (command === 'is_desktop') return true;
+    if (command === 'load_diagram_source') return 'flowchart TD\n  A --> B';
+    if (command === 'prepare_window_expansion') return 'top-left';
+  }, { diagram: { querySelector: () => svg }, frameLimit: 2 });
+  app.listeners.click({ detail: 0 });
+  await new Promise(resolve => setImmediate(resolve));
+  app.listeners.keydown({ key: 'Escape', preventDefault() {} });
+  await new Promise(resolve => setTimeout(resolve, 150));
+  assert.equal(commands.at(-1), 'shrink_window');
+  assert.equal(styleAttribute, 'max-width: 168px;');
 });
 
 test('prepares the selected corner before expanding and collapses on Escape', async () => {
