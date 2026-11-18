@@ -392,6 +392,8 @@ fn animate_appkit_frame_with_bitmap(
                     layer.removeFromSuperlayer();
                     return Ok(false);
                 }
+                let autoresizing_mask = view.autoresizingMask();
+                view.setAutoresizingMask(NSAutoresizingMaskOptions::empty());
                 let center = NSNotificationCenter::defaultCenter();
                 let posted_frame_changes = parent.postsFrameChangedNotifications();
                 parent.setPostsFrameChangedNotifications(true);
@@ -439,6 +441,8 @@ fn animate_appkit_frame_with_bitmap(
                 let completion = RcBlock::new(move || {
                     unsafe { center.removeObserver((&*observer).as_ref()) };
                     parent.setPostsFrameChangedNotifications(posted_frame_changes);
+                    retained_view.setFrame(parent.bounds());
+                    retained_view.setAutoresizingMask(autoresizing_mask);
                     retained_view.setHidden(false);
                     completion_layer.removeFromSuperlayer();
                     let _ = completion_sender.send(Ok(()));
